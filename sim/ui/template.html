@@ -1,0 +1,760 @@
+<title>Slot Scope</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#eef2f7; --panel:#ffffff; --panel-2:#f7f9fc;
+  --ink:#101822; --ink-2:#46566a; --ink-3:#77879b;
+  --rule:#d3dce7; --rule-2:#e6ecf3;
+  --accent:#0b6f78; --accent-soft:#d6eef0;
+  --poll:#c2660a; --resp:#0779a3; --final:#6d3ad4; --report:#04795a;
+  --clash:#c62828; --pass:#04795a; --warn:#c2660a; --fail:#c62828;
+  --grid:#dde5ee;
+  --shadow:0 1px 2px rgba(16,24,34,.06),0 8px 24px -12px rgba(16,24,34,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0c121a; --panel:#141c26; --panel-2:#111925;
+    --ink:#e3eaf3; --ink-2:#9fb0c4; --ink-3:#6d7f95;
+    --rule:#243140; --rule-2:#1c2734;
+    --accent:#2fd4c0; --accent-soft:#12312f;
+    --poll:#fbbf24; --resp:#38bdf8; --final:#a78bfa; --report:#34d399;
+    --clash:#f87171; --pass:#34d399; --warn:#fbbf24; --fail:#f87171;
+    --grid:#1e2937;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0c121a; --panel:#141c26; --panel-2:#111925;
+  --ink:#e3eaf3; --ink-2:#9fb0c4; --ink-3:#6d7f95;
+  --rule:#243140; --rule-2:#1c2734;
+  --accent:#2fd4c0; --accent-soft:#12312f;
+  --poll:#fbbf24; --resp:#38bdf8; --final:#a78bfa; --report:#34d399;
+  --clash:#f87171; --pass:#34d399; --warn:#fbbf24; --fail:#f87171;
+  --grid:#1e2937;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  font-variant-numeric:tabular-nums}
+.wrap{max-width:1420px;margin:0 auto;padding:22px 20px 64px}
+
+/* ---------- header ---------- */
+header{
+  display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;
+  justify-content:space-between;
+  padding-bottom:16px;margin-bottom:20px;
+  border-bottom:1px solid var(--rule);
+}
+h1{
+  margin:0;font-size:25px;font-weight:600;letter-spacing:-.015em;
+  text-wrap:balance;
+}
+.sub{margin:5px 0 0;color:var(--ink-2);font-size:13.5px;max-width:62ch}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  margin:0 0 7px;
+}
+.hgroup{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;
+  overflow:hidden;background:var(--panel)}
+.seg button{
+  appearance:none;border:0;background:transparent;color:var(--ink-2);
+  font:inherit;font-size:12.5px;font-weight:500;padding:7px 13px;cursor:pointer;
+  border-right:1px solid var(--rule);
+}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:500;
+  padding:5px 10px;border-radius:99px;border:1px solid var(--rule);
+  background:var(--panel);color:var(--ink-2);
+}
+.chip b{font-weight:600;color:var(--ink)}
+.dot{width:7px;height:7px;border-radius:99px;background:var(--ink-3)}
+.chip.ok .dot{background:var(--pass)} .chip.ok{border-color:var(--pass)}
+.chip.bad .dot{background:var(--fail)} .chip.bad{border-color:var(--fail)}
+
+/* ---------- metric strip ---------- */
+.metrics{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));
+  gap:0;border:1px solid var(--rule);border-radius:10px;
+  background:var(--panel);overflow:hidden;margin-bottom:20px;
+}
+.metric{padding:11px 14px;border-right:1px solid var(--rule-2)}
+.metric:last-child{border-right:0}
+.metric .k{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+}
+.metric .v{font-size:19px;font-weight:600;letter-spacing:-.02em;margin-top:2px;
+  font-variant-numeric:tabular-nums}
+.metric .u{font-size:12px;font-weight:400;color:var(--ink-3);margin-left:2px}
+
+/* ---------- panels ---------- */
+.panel{
+  background:var(--panel);border:1px solid var(--rule);border-radius:11px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.phead{
+  display:flex;align-items:baseline;gap:10px;justify-content:space-between;
+  padding:12px 15px;border-bottom:1px solid var(--rule-2);
+  background:var(--panel-2);flex-wrap:wrap;
+}
+.phead h2{margin:0;font-size:14px;font-weight:600;letter-spacing:-.005em}
+.phead .note{font-size:12px;color:var(--ink-3)}
+.pbody{padding:15px}
+
+.stack{display:flex;flex-direction:column;gap:20px}
+.cols{display:grid;gap:20px;grid-template-columns:1.05fr .95fr 1fr}
+@media (max-width:1080px){.cols{grid-template-columns:1fr}}
+.cols2{display:grid;gap:20px;grid-template-columns:1.25fr .75fr}
+@media (max-width:1080px){.cols2{grid-template-columns:1fr}}
+
+/* ---------- timeline ---------- */
+.tl-wrap{overflow-x:auto}
+#tl{display:block;width:100%;height:454px}
+.controls{
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+  padding:11px 15px;border-top:1px solid var(--rule-2);background:var(--panel-2);
+}
+.btn{
+  appearance:none;border:1px solid var(--rule);background:var(--panel);
+  color:var(--ink);font:inherit;font-size:12.5px;font-weight:500;
+  padding:6px 12px;border-radius:7px;cursor:pointer;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=range]{accent-color:var(--accent);flex:1;min-width:150px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+  font-size:12px;color:var(--ink-2)}
+.swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
+  margin-right:5px;vertical-align:-1px}
+
+#tip{
+  position:fixed;pointer-events:none;z-index:50;opacity:0;
+  transition:opacity .09s;max-width:310px;
+  background:var(--panel);border:1px solid var(--rule);border-radius:8px;
+  box-shadow:var(--shadow);padding:9px 11px;font-size:12px;
+}
+#tip .tt{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:12px;
+  margin-bottom:5px}
+#tip table{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;
+  font-size:11.5px;font-variant-numeric:tabular-nums}
+#tip td{padding:1px 0}
+#tip td:first-child{color:var(--ink-3);padding-right:11px}
+
+/* ---------- matrix ---------- */
+.mx{display:grid;gap:3px;font-family:"IBM Plex Mono",monospace;font-size:11px}
+.mx-cell{
+  aspect-ratio:1.5;border-radius:3px;display:grid;place-items:center;
+  cursor:pointer;color:#fff;font-weight:500;border:1px solid transparent;
+}
+.mx-cell.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.mx-lbl{color:var(--ink-3);font-size:10px;display:grid;place-items:center}
+.mx-legend{display:flex;align-items:center;gap:8px;margin-top:11px;
+  font-size:11.5px;color:var(--ink-3)}
+.ramp{height:8px;flex:1;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent-soft),var(--accent))}
+
+/* ---------- tables ---------- */
+table.data{width:100%;border-collapse:collapse;font-size:12.5px}
+table.data th{
+  text-align:right;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 0 7px;border-bottom:1px solid var(--rule-2);
+}
+table.data th:first-child,table.data td:first-child{text-align:left}
+table.data td{
+  padding:6px 0;border-bottom:1px solid var(--rule-2);text-align:right;
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+}
+table.data tr:last-child td{border-bottom:0}
+.state{font-weight:600}
+.state.LOCKED{color:var(--pass)}
+.state.FREERUN{color:var(--warn)}
+.state.COLD{color:var(--ink-3)}
+.state.FAULT{color:var(--fail)}
+
+/* ---------- inspector ---------- */
+.insp{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.insp .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;
+  border-bottom:1px solid var(--rule-2)}
+.insp .row:last-child{border-bottom:0}
+.insp .row span:first-child{color:var(--ink-3)}
+.insp h3{font-family:"IBM Plex Sans",sans-serif;font-size:11px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  margin:14px 0 5px;font-weight:600}
+.insp h3:first-child{margin-top:0}
+.hint{color:var(--ink-3);font-size:12.5px;font-family:"IBM Plex Sans",sans-serif}
+
+/* ---------- budget ---------- */
+.bud{display:flex;height:34px;border-radius:6px;overflow:hidden;
+  border:1px solid var(--rule)}
+.bud div{display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;
+  font-size:10px;color:#fff;font-weight:500;overflow:hidden;white-space:nowrap}
+.bud-key{display:flex;flex-wrap:wrap;gap:12px;margin-top:11px;font-size:11.5px;
+  color:var(--ink-2)}
+canvas.hist{display:block;width:100%;height:172px}
+
+footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--rule);
+  color:var(--ink-3);font-size:12px}
+footer code{font-family:"IBM Plex Mono",monospace;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <p class="eyebrow">UWB DS-TWR &middot; initiator-driven fixed slots</p>
+    <h1>Slot Scope</h1>
+    <p class="sub">Every transmission of a 4-tag, 12-anchor superframe placed on
+      a real microsecond axis, from the firmware's own <span class="mono">sync.c</span>,
+      <span class="mono">slots.c</span>, <span class="mono">timing.c</span> and
+      <span class="mono">ranging.c</span>.</p>
+  </div>
+  <div class="hgroup">
+    <div class="seg" id="scen" role="group" aria-label="Scenario"></div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button id="thm" type="button" aria-pressed="false">Theme</button>
+    </div>
+  </div>
+</header>
+
+<div class="chips" id="chips" style="margin-bottom:18px"></div>
+<div class="metrics" id="metrics"></div>
+
+<div class="stack">
+
+  <section class="panel">
+    <div class="phead">
+      <h2>Slot timeline</h2>
+      <span class="note" id="tlnote"></span>
+    </div>
+    <div class="tl-wrap"><canvas id="tl"></canvas></div>
+    <div class="controls">
+      <button class="btn primary" id="play" type="button">Play</button>
+      <button class="btn" id="prev" type="button">&larr; Prev</button>
+      <button class="btn" id="next" type="button">Next &rarr;</button>
+      <button class="btn" id="anom" type="button">Next anomaly</button>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Superframe">
+      <span class="mono" id="sfnlab" style="font-size:12px;color:var(--ink-2)"></span>
+    </div>
+    <div class="controls" style="border-top:1px solid var(--rule-2)">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--poll)"></i>Poll</span>
+        <span><i class="swatch" style="background:var(--resp)"></i>Response</span>
+        <span><i class="swatch" style="background:var(--final)"></i>Final</span>
+        <span><i class="swatch" style="background:var(--report)"></i>Report</span>
+        <span><i class="swatch" style="background:var(--clash)"></i>Overlap</span>
+        <span><i class="swatch" style="background:var(--grid)"></i>Guard band</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="phead"><h2>Geometry</h2><span class="note">millimetres</span></div>
+      <div class="pbody"><svg id="map" viewBox="0 0 400 330" style="width:100%;height:auto"></svg></div>
+    </section>
+
+    <section class="panel">
+      <div class="phead">
+        <h2>Ranges per pair</h2>
+        <span class="note" id="mxnote">click a cell</span>
+      </div>
+      <div class="pbody">
+        <div class="mx" id="mx"></div>
+        <div class="mx-legend"><span id="mxlo">0</span><i class="ramp"></i><span id="mxhi"></span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="phead"><h2>Frame synchronization</h2><span class="note">&sect;6</span></div>
+      <div class="pbody" style="overflow-x:auto"><table class="data" id="synctab"></table></div>
+    </section>
+  </div>
+
+  <div class="cols2">
+    <section class="panel">
+      <div class="phead">
+        <h2>Range error</h2>
+        <span class="note">1 DTU = 15.650040 ps &asymp; 4.69 mm of range</span>
+      </div>
+      <div class="pbody"><canvas id="hist" class="hist"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="phead"><h2>Exchange inspector</h2><span class="note" id="inspnote"></span></div>
+      <div class="pbody"><div class="insp" id="insp"></div></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="phead">
+      <h2>Frame budget</h2>
+      <span class="note">equation (14), against the configured T<sub>f</sub></span>
+    </div>
+    <div class="pbody">
+      <div class="bud" id="bud"></div>
+      <div class="bud-key" id="budkey"></div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  Generated from <code>sim --trace</code>. Full per-event detail covers the first
+  <span id="winlab" class="mono"></span> superframes; every figure in the header
+  and in the per-pair matrix is the whole run.
+  <span id="scopenote"></span>
+</footer>
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+const RUNS = /*__TRACE_DATA__*/null;
+const DTU_NS = 63.8976;                 // device time units per nanosecond
+const dtu2us = d => d / DTU_NS / 1000;
+const KINDS = {Poll:'--poll', Resp:'--resp', Final:'--final', Report:'--report'};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+let key = Object.keys(RUNS)[0];
+let R, sf = 0, nSf = 0, playing = false, selPair = null, selRange = null;
+let t0 = 0, boxes = [];
+
+/* ---------- theme ---------- */
+const thm = document.getElementById('thm');
+thm.onclick = () => {
+  const dark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const cur = document.documentElement.getAttribute('data-theme') || (dark ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  thm.setAttribute('aria-pressed', next === 'dark');
+  redrawAll();
+};
+
+/* ---------- scenario switch ---------- */
+const scen = document.getElementById('scen');
+Object.keys(RUNS).forEach(k => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = k === 'ideal' ? 'Ideal' : 'Drift + loss';
+  b.onclick = () => { key = k; load(); };
+  scen.appendChild(b);
+});
+
+/* ---------- load a run ---------- */
+function load(){
+  R = RUNS[key];
+  [...scen.children].forEach((b,i) => b.setAttribute('aria-pressed', Object.keys(RUNS)[i] === key));
+
+  const tx = R.events.filter(e => e.t === 'tx');
+  t0 = Math.min(...tx.map(e => e.t0));
+  const tF = R.meta.t_F_us;
+  nSf = Math.max(1, Math.ceil(dtu2us(Math.max(...tx.map(e => e.t1)) - t0) / tF));
+  sf = 0; selPair = null; selRange = null;
+
+  document.getElementById('scrub').max = nSf - 1;
+  document.getElementById('winlab').textContent = R.meta.window;
+
+  chips(); metrics(); matrix(); syncTab(); budget(); mapDraw();
+  redrawAll();
+}
+
+function chips(){
+  const r = R.run, m = R.meta;
+  const pairs = R.pairs || [];
+  /* Within a tag. Across tags it only reflects that tag 0 fires one Poll more
+     than the rest before the run ends, which is not an anchor being starved. */
+  let spread = 0;
+  for (let t = 0; t < m.n_tags; t++){
+    const c = pairs.filter(p => p.tag === t).map(p => p.count);
+    if (c.length) spread = Math.max(spread, Math.max(...c) - Math.min(...c));
+  }
+  const counts = pairs.map(p => p.count);
+  const starved = counts.filter(c => c === 0).length;
+  const c = [
+    [r.pass ? 'ok' : 'bad', r.pass ? 'All assertions pass' : 'Assertions failed'],
+    [r.collisions === 0 ? 'ok' : 'bad', `<b>${r.collisions}</b> slot collisions`],
+    [starved === 0 ? 'ok' : 'bad', `<b>${starved}</b> anchors starved`],
+    ['', `spread <b>${spread}</b> samples`],
+    ['', `loss <b>${m.loss_pct.toFixed(2)}%</b> per hop`],
+  ];
+  document.getElementById('chips').innerHTML = c.map(
+    ([cl, t]) => `<span class="chip ${cl}"><i class="dot"></i>${t}</span>`).join('');
+}
+
+function metrics(){
+  const m = R.meta, tg = R.tags || [];
+  const hz = tg.length ? tg.reduce((a,t) => a + t.hz, 0) / tg.length : 0;
+  const jit = tg.length ? Math.max(...tg.map(t => t.jitter_ns)) : 0;
+  const pk = (R.pairs || []).reduce((a,p) => Math.max(a, p.peak_mm), 0);
+  const bias = (R.pairs || []).reduce((a,p) => a + p.bias_mm, 0) / Math.max(1,(R.pairs||[]).length);
+  const rows = [
+    ['tags &times; anchors', `${m.n_tags}&times;${m.n_anch}`, ''],
+    ['per pair', hz.toFixed(3), 'Hz'],
+    ['T<sub>f</sub>', m.t_f_us.toLocaleString(), '&micro;s'],
+    ['T<sub>F</sub>', m.t_F_us.toLocaleString(), '&micro;s'],
+    ['alarm jitter', jit.toLocaleString(), 'ns'],
+    ['peak error', pk.toFixed(1), 'mm'],
+    ['mean bias', (bias >= 0 ? '+' : '') + bias.toFixed(2), 'mm'],
+    ['transmissions', m.superframes ? R.run.transmissions.toLocaleString() : '—', ''],
+  ];
+  document.getElementById('metrics').innerHTML = rows.map(
+    ([k,v,u]) => `<div class="metric"><div class="k">${k}</div><div class="v">${v}<span class="u">${u}</span></div></div>`).join('');
+}
+
+/* ---------- timeline ---------- */
+const tl = document.getElementById('tl'), ctx = tl.getContext('2d');
+
+function drawTL(){
+  const m = R.meta, N = m.n_tags + m.n_anch;
+  const dpr = devicePixelRatio || 1;
+  const W = tl.clientWidth || 900, rowH = 22, padT = 34, padL = 74, padR = 16, padB = 30;
+  const H = padT + N * rowH + padB;
+  tl.style.height = H + 'px';
+  tl.width = W * dpr; tl.height = H * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  const tF = m.t_F_us, plotW = W - padL - padR;
+  const x = us => padL + (us / tF) * plotW;
+  const winStart = t0 + sf * tF * DTU_NS * 1000;
+
+  /* guard bands: the tail of every frame */
+  ctx.fillStyle = css('--grid');
+  for (let f = 0; f < m.n_tags; f++){
+    const a = x((f + 1) * m.t_f_us - m.guard_us), b = x((f + 1) * m.t_f_us);
+    ctx.globalAlpha = .55; ctx.fillRect(a, padT, Math.max(1, b - a), N * rowH); ctx.globalAlpha = 1;
+  }
+
+  /* frame boundaries + axis */
+  ctx.strokeStyle = css('--rule'); ctx.lineWidth = 1;
+  ctx.font = '500 10px "IBM Plex Mono", monospace';
+  ctx.fillStyle = css('--ink-3');
+  for (let f = 0; f <= m.n_tags; f++){
+    const xx = Math.round(x(f * m.t_f_us)) + .5;
+    ctx.beginPath(); ctx.moveTo(xx, padT - 6); ctx.lineTo(xx, padT + N * rowH); ctx.stroke();
+    if (f < m.n_tags){
+      ctx.textAlign = 'left';
+      ctx.fillText(`frame ${f}`, x(f * m.t_f_us) + 5, padT - 12);
+    }
+  }
+  ctx.textAlign = 'center';
+  for (let u = 0; u <= tF; u += Math.max(1000, Math.round(tF / 8 / 1000) * 1000)){
+    ctx.fillText(u.toLocaleString(), x(u), H - 10);
+  }
+  ctx.textAlign = 'left';
+  ctx.fillText('\u00b5s', padL - 26, H - 10);
+
+  /* row labels */
+  ctx.font = '500 11px "IBM Plex Mono", monospace';
+  for (let i = 0; i < N; i++){
+    const n = R.nodes[i], y = padT + i * rowH;
+    ctx.fillStyle = i < m.n_tags ? css('--ink') : css('--ink-2');
+    ctx.fillText(i < m.n_tags ? `tag ${i}` : `A${i - m.n_tags}`, 8, y + rowH / 2 + 4);
+    ctx.fillStyle = css('--ink-3');
+    ctx.font = '400 10px "IBM Plex Mono", monospace';
+    ctx.fillText(n.addr, 42, y + rowH / 2 + 4);
+    ctx.font = '500 11px "IBM Plex Mono", monospace';
+    ctx.strokeStyle = css('--rule-2');
+    ctx.beginPath(); ctx.moveTo(padL, y + rowH - .5); ctx.lineTo(W - padR, y + rowH - .5); ctx.stroke();
+  }
+
+  /* transmissions in this superframe */
+  boxes = [];
+  const evs = R.events.filter(e => e.t === 'tx'
+    && e.t0 >= winStart && e.t0 < winStart + tF * DTU_NS * 1000);
+  const filt = selPair;
+  for (const e of evs){
+    if (filt && !(e.node === filt.tag || e.node === R.meta.n_tags + filt.slot)) continue;
+    const a = dtu2us(e.t0 - winStart), b = dtu2us(e.t1 - winStart);
+    const xa = x(a), xb = Math.max(x(b), xa + 1.5);
+    const y = padT + e.node * rowH + 4, h = rowH - 9;
+    const clash = evs.some(o => o !== e && o.node !== e.node && o.t0 < e.t1 && e.t0 < o.t1);
+    ctx.fillStyle = clash ? css('--clash') : css(KINDS[e.kind]);
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(xa, y, xb - xa, h, 2) : ctx.rect(xa, y, xb - xa, h);
+    ctx.fill();
+    boxes.push({x:xa, y, w:xb - xa, h, e, a, b, clash});
+  }
+
+  document.getElementById('tlnote').textContent =
+    `superframe ${sf + 1} of ${nSf} \u00b7 ${evs.length} transmissions \u00b7 `
+    + `${m.n_tags} frames of ${m.n_anch} slot pairs`;
+  document.getElementById('sfnlab').textContent = `sfn ${sf}`;
+  document.getElementById('scrub').value = sf;
+}
+
+/* tooltip */
+const tip = document.getElementById('tip');
+const EQ = {Poll:'frame alarm, eq (9)', Resp:'eq (1) t_B_R,poll + T_r0 + sΔr',
+            Final:'eq (2) t_A_R,resp,N-1 + Δr', Report:'eq (3) t_B_R,final + T_p0 + sΔp'};
+tl.addEventListener('mousemove', ev => {
+  const r = tl.getBoundingClientRect();
+  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  const hit = boxes.find(b => mx >= b.x - 1 && mx <= b.x + b.w + 1 && my >= b.y && my <= b.y + b.h);
+  if (!hit){ tip.style.opacity = 0; return; }
+  const e = hit.e, n = R.nodes[e.node];
+  tip.innerHTML = `<div class="tt" style="color:${hit.clash ? css('--clash') : css(KINDS[e.kind])}">`
+    + `${e.kind}${e.kind === 'Resp' || e.kind === 'Report' ? ' · slot ' + e.slot : ''}`
+    + `${hit.clash ? ' — OVERLAP' : ''}</div>`
+    + `<table><tr><td>node</td><td>${n.role} ${e.node < R.meta.n_tags ? e.node : e.node - R.meta.n_tags} ${n.addr}</td></tr>`
+    + `<tr><td>start</td><td>${hit.a.toFixed(3)} µs</td></tr>`
+    + `<tr><td>end</td><td>${hit.b.toFixed(3)} µs</td></tr>`
+    + `<tr><td>air</td><td>${(hit.b - hit.a).toFixed(2)} µs</td></tr>`
+    + `<tr><td>device time</td><td>${e.t0.toLocaleString()} DTU</td></tr>`
+    + `<tr><td>placed by</td><td>${EQ[e.kind]}</td></tr></table>`;
+  tip.style.opacity = 1;
+  const tw = 320;
+  tip.style.left = Math.min(ev.clientX + 14, innerWidth - tw) + 'px';
+  tip.style.top = (ev.clientY + 16) + 'px';
+});
+tl.addEventListener('mouseleave', () => tip.style.opacity = 0);
+
+/* ---------- playback ---------- */
+let timer = null;
+const play = document.getElementById('play');
+function setPlay(on){
+  playing = on; play.textContent = on ? 'Pause' : 'Play';
+  clearInterval(timer);
+  if (on) timer = setInterval(() => { sf = (sf + 1) % nSf; drawTL(); }, 620);
+}
+play.onclick = () => setPlay(!playing);
+document.getElementById('next').onclick = () => { setPlay(false); sf = Math.min(nSf-1, sf+1); drawTL(); };
+document.getElementById('prev').onclick = () => { setPlay(false); sf = Math.max(0, sf-1); drawTL(); };
+document.getElementById('scrub').oninput = e => { setPlay(false); sf = +e.target.value; drawTL(); };
+document.getElementById('anom').onclick = () => {
+  setPlay(false);
+  const tF = R.meta.t_F_us * DTU_NS * 1000;
+  const bad = R.events.filter(e => e.t === 'collision' || e.t === 'frame_lost'
+    || (e.t === 'sync' && e.ev === 'drift_reset'));
+  const nxt = bad.map(e => Math.floor((e.t0 - t0) / tF)).filter(s => s > sf).sort((a,b)=>a-b)[0];
+  if (nxt === undefined){
+    document.getElementById('tlnote').textContent = 'no anomaly after this superframe — the run is clean';
+  } else { sf = Math.min(nSf-1, nxt); drawTL(); }
+};
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === ' '){ e.preventDefault(); setPlay(!playing); }
+  if (e.key === 'ArrowRight' || e.key === ']'){ setPlay(false); sf = Math.min(nSf-1, sf+1); drawTL(); }
+  if (e.key === 'ArrowLeft'  || e.key === '['){ setPlay(false); sf = Math.max(0, sf-1); drawTL(); }
+});
+
+/* ---------- geometry ---------- */
+function mapDraw(){
+  const m = R.meta, svg = document.getElementById('map');
+  const xs = R.nodes.map(n => n.x_mm), ys = R.nodes.map(n => n.y_mm);
+  const pad = 34, W = 400, H = 330;
+  const lo = [Math.min(...xs), Math.min(...ys)], hi = [Math.max(...xs), Math.max(...ys)];
+  const sc = Math.min((W - 2*pad) / Math.max(1, hi[0]-lo[0]), (H - 2*pad) / Math.max(1, hi[1]-lo[1]));
+  const px = v => pad + (v - lo[0]) * sc;
+  const py = v => H - pad - (v - lo[1]) * sc;
+  let s = '';
+  if (selPair){
+    const t = R.nodes[selPair.tag], a = R.nodes[m.n_tags + selPair.slot];
+    s += `<line x1="${px(t.x_mm)}" y1="${py(t.y_mm)}" x2="${px(a.x_mm)}" y2="${py(a.y_mm)}"
+           stroke="${css('--accent')}" stroke-width="1.6"/>`;
+  } else {
+    for (let t = 0; t < m.n_tags; t++)
+      for (let a = 0; a < m.n_anch; a++)
+        s += `<line x1="${px(R.nodes[t].x_mm)}" y1="${py(R.nodes[t].y_mm)}"
+               x2="${px(R.nodes[m.n_tags+a].x_mm)}" y2="${py(R.nodes[m.n_tags+a].y_mm)}"
+               stroke="${css('--rule')}" stroke-width=".5" opacity=".55"/>`;
+  }
+  R.nodes.forEach((n,i) => {
+    const isTag = i < m.n_tags;
+    s += isTag
+      ? `<rect x="${px(n.x_mm)-5}" y="${py(n.y_mm)-5}" width="10" height="10" rx="2"
+          fill="${css('--poll')}"/>`
+      : `<circle cx="${px(n.x_mm)}" cy="${py(n.y_mm)}" r="4.5" fill="${css('--resp')}"/>`;
+    s += `<text x="${px(n.x_mm)}" y="${py(n.y_mm) - 9}" fill="${css('--ink-3')}"
+           font-family="IBM Plex Mono, monospace" font-size="8.5" text-anchor="middle">`
+      + `${isTag ? 'T' + i : 'A' + (i - m.n_tags)}</text>`;
+  });
+  svg.innerHTML = s;
+}
+
+/* ---------- per-pair matrix ---------- */
+function matrix(){
+  const m = R.meta, host = document.getElementById('mx');
+  const pairs = R.pairs || [];
+  const max = Math.max(1, ...pairs.map(p => p.count));
+  host.style.gridTemplateColumns = `26px repeat(${m.n_anch}, 1fr)`;
+  let s = '<div class="mx-lbl"></div>';
+  for (let a = 0; a < m.n_anch; a++) s += `<div class="mx-lbl">${a}</div>`;
+  for (let t = 0; t < m.n_tags; t++){
+    s += `<div class="mx-lbl">t${t}</div>`;
+    for (let a = 0; a < m.n_anch; a++){
+      const p = pairs.find(q => q.tag === t && q.slot === a) || {count:0,hz:0,bias_mm:0,peak_mm:0};
+      const f = p.count / max;
+      const sel = selPair && selPair.tag === t && selPair.slot === a ? ' sel' : '';
+      s += `<div class="mx-cell${sel}" data-t="${t}" data-a="${a}"
+             style="background:color-mix(in srgb, var(--accent) ${Math.round(18+f*82)}%, var(--accent-soft))"
+             title="tag ${t} \u2192 anchor ${a}: ${p.count} ranges, ${p.hz.toFixed(2)} Hz, bias ${p.bias_mm.toFixed(2)} mm">`
+        + `${p.count}</div>`;
+    }
+  }
+  host.innerHTML = s;
+  document.getElementById('mxhi').textContent = max + ' ranges';
+  host.querySelectorAll('.mx-cell').forEach(c => c.onclick = () => {
+    const t = +c.dataset.t, a = +c.dataset.a;
+    selPair = (selPair && selPair.tag === t && selPair.slot === a) ? null : {tag:t, slot:a};
+    const p = (R.pairs||[]).find(q => q.tag === t && q.slot === a);
+    document.getElementById('mxnote').textContent = selPair
+      ? `tag ${t} \u2192 anchor ${a} \u00b7 ${p.hz.toFixed(3)} Hz \u00b7 bias ${p.bias_mm.toFixed(2)} mm`
+      : 'click a cell';
+    matrix(); mapDraw(); drawTL(); hist(); inspector();
+  });
+}
+
+/* ---------- sync ---------- */
+function syncTab(){
+  const rows = (R.tags || []).map(t => `<tr>
+    <td>tag ${t.tag}</td>
+    <td class="state ${t.state}">${t.state}</td>
+    <td>${t.rearm.toLocaleString()}</td>
+    <td>${t.drift_reset}</td>
+    <td>${t.dup}</td>
+    <td>${t.last_err_us}</td>
+    <td>${t.jitter_ns.toLocaleString()}</td></tr>`).join('');
+  document.getElementById('synctab').innerHTML =
+    `<tr><th>node</th><th>state</th><th>rearms</th><th>drift</th><th>dup</th>
+     <th>err &micro;s</th><th>jitter ns</th></tr>` + rows;
+}
+
+/* ---------- error histogram ---------- */
+function hist(){
+  const c = document.getElementById('hist'), g = c.getContext('2d');
+  const dpr = devicePixelRatio || 1, W = c.clientWidth || 600, H = 172;
+  c.width = W*dpr; c.height = H*dpr; g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,W,H);
+
+  let rs = R.events.filter(e => e.t === 'range');
+  if (selPair) rs = rs.filter(e => e.tag === selPair.tag && e.slot === selPair.slot);
+  if (!rs.length){ g.fillStyle = css('--ink-3'); g.font = '13px "IBM Plex Sans"';
+    g.fillText('no ranges in the detail window', 12, 28); return; }
+
+  const errs = rs.map(e => e.err_mm);
+  const lim = Math.max(8, Math.ceil(Math.max(...errs.map(Math.abs)) / 2) * 2);
+  const NB = 25, bins = new Array(NB).fill(0);
+  errs.forEach(v => bins[Math.min(NB-1, Math.floor((v + lim) / (2*lim) * NB))]++);
+  const mx = Math.max(...bins), padL = 34, padB = 26, padT = 14, plotW = W - padL - 12;
+  const x = v => padL + ((v + lim) / (2*lim)) * plotW;
+
+  /* the +/-1 DTU quantization band, which is the floor this can reach */
+  const q = 4.69;
+  g.fillStyle = css('--accent-soft');
+  g.fillRect(x(-q), padT, x(q) - x(-q), H - padT - padB);
+
+  g.strokeStyle = css('--rule-2'); g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++){
+    const y = Math.round(padT + i * (H - padT - padB) / 4) + .5;
+    g.beginPath(); g.moveTo(padL, y); g.lineTo(W - 12, y); g.stroke();
+  }
+  g.fillStyle = css('--accent');
+  const bw = plotW / NB;
+  bins.forEach((n, i) => {
+    if (!n) return;
+    const h = (n / mx) * (H - padT - padB);
+    g.fillRect(padL + i*bw + .6, H - padB - h, bw - 1.2, h);
+  });
+  g.strokeStyle = css('--ink-3');
+  g.beginPath(); g.moveTo(x(0), padT); g.lineTo(x(0), H - padB); g.stroke();
+
+  g.fillStyle = css('--ink-3');
+  g.font = '500 10px "IBM Plex Mono", monospace';
+  g.textAlign = 'center';
+  [-lim, -lim/2, 0, lim/2, lim].forEach(v =>
+    g.fillText(v.toFixed(0), x(v), H - 8));
+  g.textAlign = 'left';
+  g.fillText('mm', padL - 30, H - 8);
+  g.fillText(mx + '', 6, padT + 8);
+  g.fillStyle = css('--accent');
+  g.fillText('\u00b11 DTU', x(q) + 5, padT + 10);
+}
+
+/* ---------- exchange inspector ---------- */
+function inspector(){
+  let rs = R.events.filter(e => e.t === 'range');
+  if (selPair) rs = rs.filter(e => e.tag === selPair.tag && e.slot === selPair.slot);
+  const e = selRange || rs[0];
+  const host = document.getElementById('insp');
+  if (!e){ host.innerHTML = '<p class="hint">No ranges in the detail window.</p>'; return; }
+
+  const L = ['t_A_T,poll', 't_B_R,poll', 't_B_T,resp', 't_A_R,resp', 't_A_T,final', 't_B_R,final'];
+  const [ptx, prx, rtx, rrx, ftx, frx] = e.ts;
+  const iv = [
+    ['T_rd¹', rrx - ptx, 'initiator round 1'],
+    ['T_rp¹', rtx - prx, 'responder reply 1'],
+    ['T_rd²', frx - rtx, 'responder round 2'],
+    ['T_rp²', ftx - rrx, 'initiator reply 2'],
+  ];
+  document.getElementById('inspnote').textContent =
+    `tag ${e.tag} \u2192 ${e.anchor} \u00b7 sfn ${e.sfn}`;
+  host.innerHTML =
+    '<h3>Six timestamps &mdash; device time units</h3>'
+    + e.ts.map((v,i) => `<div class="row"><span>${L[i]}</span><span>${v.toLocaleString()}</span></div>`).join('')
+    + '<h3>Intervals of equations (4) and (5)</h3>'
+    + iv.map(([k,v,d]) => `<div class="row"><span>${k} &middot; ${d}</span><span>${v.toLocaleString()}</span></div>`).join('')
+    + '<h3>Result</h3>'
+    + `<div class="row"><span>τ &middot; eq (6)</span><span>${e.tof_ps.toLocaleString()} ps</span></div>`
+    + `<div class="row"><span>distance</span><span>${e.d_mm.toLocaleString()} mm</span></div>`
+    + `<div class="row"><span>true</span><span>${e.d_true_mm.toFixed(1)} mm</span></div>`
+    + `<div class="row"><span>error</span><span style="color:${Math.abs(e.err_mm) <= 4.69 ? css('--pass') : css('--warn')}">`
+    + `${e.err_mm >= 0 ? '+' : ''}${e.err_mm.toFixed(2)} mm</span></div>`
+    + `<div class="row"><span>flags</span><span>0x${e.flags.toString(16).padStart(2,'0')}`
+    + `${e.flags === 0 ? ' — full DS-TWR' : ''}</span></div>`;
+}
+
+/* ---------- frame budget ---------- */
+function budget(){
+  const m = R.meta, ns2us = n => n / 1000;
+  const terms = [
+    ['air(Poll)',   ns2us(m.air.poll_ns),   '--poll'],
+    ['T_r0',        m.resp_base_us,          '--resp'],
+    ['(N-1)Δr', (m.n_anch - 1) * m.resp_pitch_us, '--resp'],
+    ['air(Resp)',   ns2us(m.air.resp_ns),   '--resp'],
+    ['Δr',      m.resp_pitch_us,         '--resp'],
+    ['air(Final)',  ns2us(m.air.final_ns),  '--final'],
+    ['T_p0',        m.report_base_us,        '--report'],
+    ['(N-1)Δp', (m.n_anch - 1) * m.report_pitch_us, '--report'],
+    ['air(Report)', ns2us(m.air.report_ns), '--report'],
+    ['T_g',         m.guard_us,              '--grid'],
+  ];
+  const tot = terms.reduce((a,t) => a + t[1], 0);
+  document.getElementById('bud').innerHTML = terms.map(([k,v,c]) =>
+    `<div style="flex:${v};background:${css(c)}" title="${k}: ${v.toFixed(1)} µs">`
+    + `${v / tot > .07 ? k : ''}</div>`).join('');
+  const slack = m.t_f_us - tot;
+  document.getElementById('budkey').innerHTML =
+    terms.map(([k,v,c]) => `<span><i class="swatch" style="background:${css(c)}"></i>`
+      + `${k} <span class="mono">${v.toFixed(0)}µs</span></span>`).join('')
+    + `<span style="margin-left:auto;color:${slack >= 0 ? css('--pass') : css('--fail')}">`
+    + `<b>eq (14) minimum ${tot.toFixed(0)} µs</b> vs configured T<sub>f</sub> `
+    + `${m.t_f_us} µs &mdash; ${slack >= 0 ? 'slack ' : 'OVER BY '}`
+    + `${Math.abs(slack).toFixed(0)} µs</span>`;
+}
+
+function redrawAll(){ drawTL(); hist(); inspector(); mapDraw(); matrix(); budget(); }
+addEventListener('resize', () => { drawTL(); hist(); });
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change', redrawAll);
+
+document.getElementById('scopenote').textContent =
+  'The role loops are covered by the fork harness; this run is the single-process simulator.';
+load();
+</script>

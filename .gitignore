@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+_build/
+.pio/
+*.o
+*.d
+.DS_Store
+sim/sim
+sim/loop/harness
+test/test_host
