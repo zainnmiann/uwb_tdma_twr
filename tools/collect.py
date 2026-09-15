@@ -6,9 +6,12 @@ Usage: collect.py [seconds]
 import sys, os, time, statistics, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from uwb import BOARDS, popen, sread, get_stat, get_measure
+import _cleanup
+
+_cleanup.install()
 
 SECS = float(sys.argv[1]) if len(sys.argv) > 1 else 12.0
-TAGS = ["DWM_TAG", "ESP_TAG"]
+TAGS = ["ESP_T1", "ESP_T2"]
 
 FLAGBITS = [(0x01, "SS_FB"), (0x02, "NLOS"), (0x04, "RESP_LOST"),
             (0x08, "REP_LOST"), (0x10, "DESYNC"), (0x20, "HASH_MM")]

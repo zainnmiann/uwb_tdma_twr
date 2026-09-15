@@ -3,15 +3,19 @@
 import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from uwb import BOARDS, popen, sread
+import _cleanup
 
-TAGS = sys.argv[1:] or ["DWM_TAG", "ESP_TAG"]
+_cleanup.install()
+
+TAGS = sys.argv[1:] or ["ESP_T1", "ESP_T2"]
 FL = [(0x01,"SS"),(0x02,"NLOS"),(0x04,"RLOST"),(0x08,"PLOST"),(0x10,"DESYNC"),(0x20,"HASH")]
 st, ports, bufs = {}, {}, {}
 
 for t in TAGS:
     p, b = BOARDS[t]
     try:
-        ports[t] = popen(p, b, settle=0.2); bufs[t] = b''
+        ports[t] = popen(p, b, settle=0.2)
+        _cleanup.on_exit(ports[t].close); bufs[t] = b''
     except Exception as e:
         print(f"{t}: {e}")
 
@@ -38,7 +42,7 @@ try:
                     pass
         if time.time() - last > 0.5:
             last = time.time()
-            os.system('clear')
+            sys.stdout.write('\033[H\033[J')
             print(f"{'tag':9} {'slot':>4} {'anchor':>8} {'range':>9} {'rxp':>7} {'Hz':>6} {'ok%':>5}  flags")
             print("-" * 68)
             for (t, slot), d in sorted(st.items()):

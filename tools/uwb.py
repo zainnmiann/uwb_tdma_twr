@@ -3,10 +3,20 @@
 import time, serial
 
 BOARDS = {
-    "DWM_ANC": ("/dev/cu.usbmodem0007601315731", 115200),
-    "DWM_TAG": ("/dev/cu.usbmodem0007601315901", 115200),
-    "ESP_ANC": ("/dev/cu.usbserial-023BB1E4",    921600),
-    "ESP_TAG": ("/dev/cu.usbserial-023BB217",    921600),
+    # Roles reassigned 2026-09-15: both ESP32s are now tags (initiators),
+    # both DWM1001s are anchors (responders). Keys are named for the label
+    # each board reports (T1/T2/A1/A2), derived from frame_index/slot_index,
+    # so they stay meaningful if roles move again.
+    #
+    # Baud: DWM1001 at 115200, ESP32 at 921600. The DWM1001s' J-Link VCOM
+    # link showed ~60% line corruption at 921600 even passively (the
+    # firmware's own main.c calls 921600 "marginal" for that UART); the
+    # ESP32s' CP2104 path is clean at 921600. Baud is per-board and not part
+    # of cfg_hash(), so the asymmetry never affects ranging.
+    "ESP_T1": ("/dev/cu.usbserial-023BB217",    921600),   # 0x8052 frame 0
+    "ESP_T2": ("/dev/cu.usbserial-023BB1E4",    921600),   # 0x8053 frame 1
+    "DWM_A1": ("/dev/cu.usbmodem0007601315731", 115200),   # 0x0101 slot 0
+    "DWM_A2": ("/dev/cu.usbmodem0007601315901", 115200),   # 0x0F70 slot 1
 }
 
 
@@ -84,6 +94,35 @@ def query(s, payload, want, attempts=8, window=1.8):
             return out
         time.sleep(0.15)
     return []
+
+
+def check_line(line):
+    """Validate one '$PAYLOAD*XX' line against its XOR checksum.
+
+    Returns the payload (without the leading '$' or the '*XX') or None.
+
+    Serial links drop bytes under load, and a truncated line gets glued to
+    the start of the next one -- which previously surfaced as bogus anchor
+    IDs like '0$RNG' / '0x0F7$RNG' in the tables, because the torn fragment
+    still split into enough comma-separated fields to look plausible. The
+    firmware already puts an XOR checksum on every line (output.c's
+    out_line), so verifying it rejects every torn or corrupted record
+    cleanly instead of letting garbage through.
+    """
+    if not line or '$' not in line or '*' not in line:
+        return None
+    line = line[line.rindex('$'):]          # drop anything before the last '$'
+    body, _, cks = line[1:].rpartition('*')
+    if not body or len(cks) < 2:
+        return None
+    try:
+        want = int(cks[:2], 16)
+    except ValueError:
+        return None
+    got = 0
+    for ch in body:
+        got ^= ord(ch)
+    return body if got == want else None
 
 
 def get_cfg(s):

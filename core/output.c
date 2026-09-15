@@ -211,18 +211,39 @@ void out_position(uint16_t sfn, uint16_t tag_id, int32_t x, int32_t y, int32_t z
               (unsigned long)sigma_mm);
 }
 
+/* Formats one 40-bit device-time value as 10 hex digits without using a
+ * "%llX" conversion. nRF52 links against newlib-nano (--specs=nano.specs,
+ * Makefile), whose minimal vsnprintf() has no 64-bit integer support at
+ * all -- "%llX" silently consumes nothing and leaves the literal format
+ * text ("000000000lX") in the output instead of erroring, so this went
+ * undetected until $TS was first exercised (out_mask bit3 defaults off).
+ * Splitting into a 2-digit high part (bits 39:32) and an 8-digit low part
+ * (bits 31:0) uses only 32-bit conversions, which both platforms support
+ * identically, and produces the exact same 10-digit value. */
+static void fmt_ts10(char *dst, uint64_t ts)
+{
+    (void)snprintf(dst, 11, "%02X%08lX",
+                  (unsigned)((ts >> 32) & 0xFFu), (unsigned long)(ts & 0xFFFFFFFFu));
+}
+
 void out_raw_ts(uint16_t sfn, uint16_t anchor_id,
                 uint64_t poll_tx, uint64_t poll_rx, uint64_t resp_tx,
                 uint64_t resp_rx, uint64_t final_tx, uint64_t final_rx)
 {
+    char a[11], b[11], c[11], d[11], e[11], f[11];
+
     if ((cfg()->out_mask & OUT_MASK_RAW_TS) == 0u)
     {
         return;
     }
 
-    out_linef("TS,%lu,0x%04X,%010llX,%010llX,%010llX,%010llX,%010llX,%010llX",
-              (unsigned long)sfn, anchor_id,
-              (unsigned long long)poll_tx,  (unsigned long long)poll_rx,
-              (unsigned long long)resp_tx,  (unsigned long long)resp_rx,
-              (unsigned long long)final_tx, (unsigned long long)final_rx);
+    fmt_ts10(a, poll_tx);
+    fmt_ts10(b, poll_rx);
+    fmt_ts10(c, resp_tx);
+    fmt_ts10(d, resp_rx);
+    fmt_ts10(e, final_tx);
+    fmt_ts10(f, final_rx);
+
+    out_linef("TS,%lu,0x%04X,%s,%s,%s,%s,%s,%s",
+              (unsigned long)sfn, anchor_id, a, b, c, d, e, f);
 }
