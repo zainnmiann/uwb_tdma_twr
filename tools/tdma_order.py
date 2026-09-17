@@ -7,12 +7,28 @@ Same record format as raw_json.py:
    "rssi": -78.0, "timestamp_sent": 189461991988,
    "timestamp_received": 189569550865}
 
-timestamp_sent     = poll_tx : DW1000 device time the tag sent its Poll
-timestamp_received = resp_rx : device time the tag received that anchor's
-                     Response
-Both come from the firmware's $TS line (out_mask bit3, RAW_TS), enabled here
-at startup; $RNG carries range/rssi and the two are matched on
-(superframe, anchor).
+THREE DIFFERENT CLOCKS ARE IN PLAY -- do not mix them up:
+
+  timestamp_sent      The tag's own microsecond counter (the $RNG line's
+                      t_local_us field), stamped on the tag as it builds the
+                      record, before any buffering. Wraps every 71.6 min
+                      (2^32 us). Use this for update rate and ordering: it
+                      is taken at the source, so USB/OS buffering cannot
+                      distort it.
+
+  timestamp_received  This host's wall-clock time at decode. Useful only for
+                      absolute time-of-day -- USB-CDC delivers bursts of ~50
+                      records at once, so many share near-identical values.
+                      Never derive rate or ordering from it.
+
+  (the ranging timestamps)
+                      Captured in hardware inside the DW1000 at the instant
+                      each packet leaves or arrives, in 15.65 ps units, and
+                      are what the distance is computed from. They are NOT
+                      streamed -- only the resulting tof_ps and range_m are.
+                      The firmware can emit them (out_mask bit 3) but that
+                      doubles per-frame output and halves the poll rate, so
+                      this tool does not enable it.
 
 Ordering: the tags are read over independent USB serial links and USB-CDC
 delivers each port in bursts (~16 ms latency timer), so arrival order is
@@ -29,14 +45,13 @@ Usage: tdma_order.py [hold_seconds]     (default 2.5)
 import sys, os, time, json
 from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from uwb import check_line, BOARDS, popen, cmd, sread, get_cfg
+from uwb import check_line, BOARDS, popen, sread, get_cfg
 import _cleanup
 
 _cleanup.install()
 
 HOLD = float(sys.argv[1]) if len(sys.argv) > 1 else 2.5
 TAGS = ["ESP_T1", "ESP_T2"]
-RAW_TS_BIT = 0x08
 
 
 def build_labels():
@@ -56,44 +71,6 @@ def build_labels():
         elif role == "RESP" and c.get("slot_index") is not None:
             labels[node] = f"A{int(c['slot_index']) + 1}"
     return labels
-
-
-_SAVED_MASK = {}
-
-
-def restore_out_mask():
-    """Put each tag's out_mask back as we found it.
-
-    RAW_TS roughly doubles a tag's per-frame serial output, and that
-    formatting lands in emit_ranges() right after the Final -- measured to
-    push the next Poll's arming past its instant (~12% tx_late). Leaving it
-    enabled silently degrades ranging for every other tool, so always
-    restore."""
-    for name, prev in _SAVED_MASK.items():
-        try:
-            port, baud = BOARDS[name]
-            s = popen(port, baud, settle=0.3)
-            cmd(s, f"SET,out_mask,{prev}", attempts=6, window=1.2)
-            s.close()
-        except Exception as e:
-            print(f"# {name}: could not restore out_mask to {prev}: {e}",
-                  file=sys.stderr)
-
-
-def ensure_raw_ts(name):
-    port, baud = BOARDS[name]
-    s = popen(port, baud, settle=0.4)
-    c = get_cfg(s)
-    try:
-        cur = int(c.get("out_mask", "3"))
-    except (TypeError, ValueError):
-        cur = 3
-    if name not in _SAVED_MASK:
-        _SAVED_MASK[name] = cur
-        _cleanup.on_exit(restore_out_mask)
-    if not (cur & RAW_TS_BIT):
-        cmd(s, f"SET,out_mask,{cur | RAW_TS_BIT}", attempts=8, window=1.5)
-    s.close()
 
 
 def calibrate_sfn_offsets(ports, bufs, seconds=12.0):
@@ -152,9 +129,6 @@ def calibrate_sfn_offsets(ports, bufs, seconds=12.0):
 
 def main():
     labels = build_labels()
-    for t in TAGS:
-        ensure_raw_ts(t)
-
     ports, bufs = {}, {}
     for t in TAGS:
         p, b = BOARDS[t]
@@ -164,7 +138,6 @@ def main():
     offs = calibrate_sfn_offsets(ports, bufs)
     print("# sfn offsets (relative to %s): %s" % (TAGS[0], offs), file=sys.stderr)
 
-    partial = {}    # (tag_port, sfn, anchor) -> dict awaiting its $TS
     pending = {}    # sfn -> [first_seen_ts, [ (frame, slot, record), ... ] ]
 
     try:
@@ -176,48 +149,31 @@ def main():
                     raw, bufs[t] = bufs[t].split(b'\n', 1)
                     line = raw.decode('ascii', 'replace').strip()
 
+                    now = time.time()
                     body = check_line(line)
-                    if body is None:
+                    if body is None or not body.startswith('RNG,'):
                         continue
-                    if body.startswith('RNG,'):
-                        q = ['$' + body.split(',')[0]] + body.split(',')[1:]
-                        if len(q) < 12:
-                            continue
-                        try:
-                            sfn, frame, anchor = q[1], int(q[2]), q[4]
-                            slot, d_mm = int(q[5]), int(q[6])
-                            rssi, flags = float(q[8]), int(q[10], 16)
-                        except ValueError:
-                            continue
+                    q = body.split(',')
+                    if len(q) < 12:
+                        continue
+                    try:
+                        sfn, frame, slot = int(q[1]), int(q[2]), int(q[5])
+                        d_mm, flags = int(q[6]), int(q[10], 16)
                         if d_mm <= 0 or (flags & 0x04):
                             continue
-                        partial[(t, sfn, anchor)] = (frame, slot, {
+                        rec = {
                             "tag_label": labels.get(q[3], q[3]),
-                            "anchor_label": labels.get(anchor, anchor),
+                            "anchor_label": labels.get(q[4], q[4]),
                             "range_m": round(d_mm / 1000.0, 3),
-                            "rssi": rssi,
-                        })
-
-                    elif body.startswith('TS,'):
-                        q = ['$' + body.split(',')[0]] + body.split(',')[1:]
-                        if len(q) < 8:
-                            continue
-                        sfn, anchor = q[1], q[2]
-                        hit = partial.pop((t, sfn, anchor), None)
-                        if hit is None:
-                            continue
-                        frame, slot, rec = hit
-                        try:
-                            rec["timestamp_sent"] = int(q[3], 16)      # poll_tx
-                            rec["timestamp_received"] = int(q[6], 16)  # resp_rx
-                        except ValueError:
-                            continue
-                        try:
-                            key = int(sfn) - offs.get(t, 0)
-                        except ValueError:
-                            continue
-                        pending.setdefault(key, [now, []])
-                        pending[key][1].append((frame, slot, rec))
+                            "rssi": float(q[8]),
+                            "timestamp_sent": int(q[11]),     # tag's t_local_us
+                            "timestamp_received": round(now, 3),
+                        }
+                    except ValueError:
+                        continue
+                    key = sfn - offs.get(t, 0)
+                    pending.setdefault(key, [now, []])
+                    pending[key][1].append((frame, slot, rec))
 
             for sfn in sorted(k for k, (ts, _) in pending.items()
                               if now - ts >= HOLD):
