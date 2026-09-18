@@ -17,6 +17,7 @@ BOARDS = {
     "ESP_T2": ("/dev/cu.usbserial-023BB1E4",    921600),   # 0x8053 frame 1
     "ESP_T3": ("/dev/cu.usbserial-023BB1D1",    921600),   # 0x4051 frame 2
     "ESP_T4": ("/dev/cu.usbserial-023BB185",    921600),   # 0x7851 frame 3
+    "DWM_T5": ("/dev/cu.usbmodem0007602179251", 115200),   # 0x0104 frame 4
     "DWM_A1": ("/dev/cu.usbmodem0007601315731", 115200),   # 0x0101 slot 0
     "DWM_A2": ("/dev/cu.usbmodem0007601315901", 115200),   # 0x0F70 slot 1
     "DWM_A3": ("/dev/cu.usbmodem0007601315841", 115200),   # 0x0102 slot 2
