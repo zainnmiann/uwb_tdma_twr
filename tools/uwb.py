@@ -19,6 +19,7 @@ BOARDS = {
     "ESP_T4": ("/dev/cu.usbserial-023BB185",    921600),   # 0x7851 frame 3
     "DWM_A1": ("/dev/cu.usbmodem0007601315731", 115200),   # 0x0101 slot 0
     "DWM_A2": ("/dev/cu.usbmodem0007601315901", 115200),   # 0x0F70 slot 1
+    "DWM_A3": ("/dev/cu.usbmodem0007601315841", 115200),   # 0x0102 slot 2
 }
 
 # A tag's TDMA position is frame_index (validated < init_count); an anchor's
