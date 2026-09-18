@@ -22,6 +22,7 @@ BOARDS = {
     "DWM_A3": ("/dev/cu.usbmodem0007601315841", 115200),   # 0x0102 slot 2
     "DWM_A4": ("/dev/cu.usbmodem0007601316331", 115200),   # 0x0E5B slot 3
     "DWM_A5": ("/dev/cu.usbmodem0007601316261", 115200),   # 0x0103 slot 4
+    "DWM_A6": ("/dev/cu.usbmodem0007602179431", 115200),   # 0x0106 slot 5
 }
 
 # A tag's TDMA position is frame_index (validated < init_count); an anchor's
