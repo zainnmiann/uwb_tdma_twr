@@ -1,0 +1,99 @@
+{
+  "date": "2026-09-17",
+  "goal": "Restore per-tag-per-anchor update rate and anchor Poll reception to 98-99%",
+  "fleet": {
+    "tags": [
+      { "label": "T1", "board": "ESP32 UWB Pro (display)", "node_id": "0x8052" },
+      { "label": "T2", "board": "ESP32 UWB Pro (display)", "node_id": "0x8051" }
+    ],
+    "anchors": [
+      { "label": "A1", "board": "DWM1001-DEV", "node_id": "0x0101" },
+      { "label": "A2", "board": "DWM1001-DEV", "node_id": "0x0F70" }
+    ],
+    "note": "Boards were on a desk at 0.19-0.52 m. Antenna delay is UNCALIBRATED (uniform 16436), so absolute range is biased; SD and rate are the meaningful figures here."
+  },
+
+  "verified_config": {
+    "cfg_hash": "0x3F27",
+    "init_count": 2,
+    "resp_count": 2,
+    "preamble_len": 256,
+    "frame_dur_us": 6701,
+    "guard_us": 300,
+    "resp_base_us": 700,
+    "resp_pitch_us": 1100,
+    "report_base_us": 1100,
+    "report_pitch_us": 1100,
+    "rx_timeout_us": 900,
+    "rate_div": 1,
+    "sync_mmax": 10,
+    "theoretical_hz_per_tag": 74.6,
+    "comment": "$TABLEB independently computes frame_dur_us_required = 6701 for these values, so this point is spec-consistent and not an ad-hoc override."
+  },
+
+  "result_per_pair": [
+    { "tag": "T1", "anchor": "A1", "hz": 76.7, "n": 3450, "good_pct": 99.6, "range_m": 0.228, "sd_cm": 5.2, "sd_robust_cm": 5.21, "resp_lost": 8,  "report_lost": 5,  "ss_fallback": 5 },
+    { "tag": "T1", "anchor": "A2", "hz": 76.6, "n": 3446, "good_pct": 97.7, "range_m": 0.194, "sd_cm": 7.7, "sd_robust_cm": 7.73, "resp_lost": 38, "report_lost": 41, "ss_fallback": 41 },
+    { "tag": "T2", "anchor": "A1", "hz": 74.8, "n": 3365, "good_pct": 99.9, "range_m": 0.518, "sd_cm": 2.0, "sd_robust_cm": 1.95, "resp_lost": 4,  "report_lost": 0,  "ss_fallback": 0 },
+    { "tag": "T2", "anchor": "A2", "hz": 74.8, "n": 3366, "good_pct": 97.1, "range_m": 0.249, "sd_cm": 2.0, "sd_robust_cm": 2.00, "resp_lost": 52, "report_lost": 47, "ss_fallback": 47 }
+  ],
+
+  "result_counters": {
+    "window_s": 45.0,
+    "ESP_T1": { "polls_tx": 3720, "tx_late": 0, "resp_lost": 51, "sync": "LOCKED" },
+    "ESP_T2": { "polls_tx": 3458, "tx_late": 0, "resp_lost": 45, "sync": "LOCKED" },
+    "DWM_A1": { "polls_rx": 7117, "poll_rx_pct": 99.2, "resp_tx": 7117, "finals_rx": 7110, "finals_pct": 99.9, "rx_errors": 14014, "tx_late": 0 },
+    "DWM_A2": { "polls_rx": 7045, "poll_rx_pct": 98.1, "resp_tx": 7045, "finals_rx": 6960, "finals_pct": 98.8, "rx_errors": 400,   "tx_late": 0 },
+    "note": "Per-tag Hz from these counters (82.7/76.8) exceeds the 74.6 Hz theoretical ceiling and is therefore STAT,CLEAR window skew across boards, not a real rate. Use result_per_pair, which times actual $RNG line arrival over one wall-clock window."
+  },
+
+  "guard_sweep": {
+    "comment": "Run after restoring resp_base=700 / resp_pitch=1100 / report_base=1100 / report_pitch=1100. guard_us is NON-MONOTONIC: 300 is the optimum for both rate and reception.",
+    "points": [
+      { "guard_us": 300, "frame_dur_us": 6701, "hz": 79.4, "a1_poll_rx_pct": 98.3, "a2_poll_rx_pct": 98.5, "tx_late": 0 },
+      { "guard_us": 400, "frame_dur_us": 6801, "hz": 76.1, "a1_poll_rx_pct": 96.9, "a2_poll_rx_pct": 97.0, "tx_late": 0 },
+      { "guard_us": 500, "frame_dur_us": 6901, "hz": 77.0, "a1_poll_rx_pct": 96.8, "a2_poll_rx_pct": 96.6, "tx_late": 0 },
+      { "guard_us": 600, "frame_dur_us": 7001, "hz": 74.0, "a1_poll_rx_pct": 94.3, "a2_poll_rx_pct": 94.5, "tx_late": 0 }
+    ]
+  },
+
+  "root_causes": [
+    {
+      "symptom": "Anchor Poll reception collapsed to 74.4% / 58.7% and rate dropped",
+      "cause": "The $AUTOTIME-derived timing set (resp_base 750, resp_pitch 1244, report_base 1239, report_pitch 1240, T_f 7218) is looser but materially worse. $MEASURE's proc_* stats are survivor-biased -- recorded only after radio_tx_at() succeeds -- so $AUTOTIME inflates slot budgets when reception is already degraded, trading rate away for nothing.",
+      "fix": "Restore resp_base 700 / resp_pitch 1100 / report_base 1100 / report_pitch 1100, which $TABLEB confirms requires T_f=6701."
+    },
+    {
+      "symptom": "resp_lost doubled to 8.7%",
+      "cause": "rx_timeout_us raised to 1200 while resp_pitch_us was 1244. Slot 0's RX window stayed open until 2150 us while Response[1] arrived at 2194 us -- only 44 us apart -- so slot 0 swallowed slot 1's frame.",
+      "fix": "Keep rx_timeout_us well below resp_pitch_us. 900 vs 1100 is safe."
+    },
+    {
+      "symptom": "Range SD 110 cm with 40.7 m / 31.3 m outliers",
+      "cause": "REPORT_LOST forces SS-TWR fallback (RNG_FLAG_SS_FALLBACK), which is clock-offset sensitive and emits wild values. At ~4% fallback the outliers dominated SD.",
+      "fix": "Same timing fix. SS-TWR fallback fell to ~1%, and raw SD now equals outlier-robust SD in every pair (2.0-7.7 cm)."
+    },
+    {
+      "symptom": "Apparent rate drops and torn/bogus serial lines during measurement",
+      "cause": "Leftover tools/*.py readers (e.g. table.py) holding the same ports and splitting the stream. One stale reader made ESP_T1's $CFG hash read back as None.",
+      "fix": "pgrep for tools/*.py before measuring; validate every line with uwb.check_line()."
+    },
+    {
+      "symptom": "cfg_hash mismatch across the fleet (three boards 0x22D5, one 0x3F27)",
+      "cause": "A reconfiguration run aborted partway when the boards were unplugged, leaving DWM_A2 on the previous value. Mismatched hashes cause frames to be dropped outright.",
+      "fix": "Always re-read $CFG on all nodes and confirm one common hash after provisioning."
+    }
+  ],
+
+  "not_causes": [
+    "Physical-layer rx_errors: DWM_A1 logs 14014 rx_errors/45s vs DWM_A2's 400, yet the two have essentially equal Poll reception (99.2% vs 98.1%). RF noise was not the limiter.",
+    "TDMA scheduling: tx_late is 0 on all four nodes, resp_tx == polls_rx exactly on both anchors, and per tag the two anchors agree to 0.1 Hz.",
+    "ESP32 proc_us margin: widening resp_base_us from 750 to 950 against proc_us=718 made reception slightly worse, not better."
+  ],
+
+  "outstanding": [
+    "Antenna delay is uncalibrated (uniform 16436) on all four nodes; absolute range is biased. Needs one surveyed distance to calibrate.",
+    "DWM_A2 shows a consistent ~2.5 point deficit vs A1 (97.1-97.7% vs 99.6-99.9%), tracked to REPORT_LOST on its Report slot. Not yet explained.",
+    "uart_baud=921600 is deliberately NOT applied to the DWM1001s -- raising their console baud made line corruption worse (~60% of lines) rather than better. They run at 115200."
+  ]
+}
