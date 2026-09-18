@@ -27,34 +27,59 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from uwb import BOARDS, popen, cmd, get_cfg
 
 N_TAGS = 6
-N_ANCHORS = 8
+N_ANCHORS = 12
 
-# Hashed parameters. Derived on hardware 2026-09-18 from $TABLEB at N_I=6,
-# N_R=8, preamble_len=256: eq(12) needs delta_r>=1276 / delta_p>=1272 and
-# eq(13) needs T_r0>=1814 / T_p0>=1880. The values below clear those with a
-# small margin. The 2-anchor set (resp_base 700, pitches 1100) does NOT hold
-# at 8 anchors -- $TABLEB reports eq12/eq13 TIGHT -- because the Report frame
-# now carries 8 timestamp sets.
+# Hashed parameters. eq(12)/eq(13) minima (t_r0_us, delta_r_us, t_p0_us,
+# delta_p_us in $TABLEB) are pure functions of cfg.proc_us/isr_us/margin_us/
+# proc_poll_us/proc_final_us -- and those five fields are NOT hashed, so each
+# board can carry its own. But the geometry they size (resp_base_us,
+# resp_pitch_us, report_base_us, report_pitch_us) IS hashed and shared, and
+# it is the ANCHOR that actually spends this budget arming its Response and
+# Report. In this fleet anchors are DWM1001s, so the minima here were
+# computed 2026-09-18 by setting a board's proc_* fields to the nRF52 port's
+# own defaults (proc_us=1000, isr_us=15, margin_us=100, proc_poll_us=1000,
+# proc_final_us=1000 -- see port/nrf52/board_defaults.c) before reading
+# $TABLEB, NOT from a connected tag's own (irrelevant) proc_* values -- a tag
+# never responds or reports, so its $MEASURE proc_resp_us/proc_rep_us read 0
+# and its proc_us has no bearing on what an anchor needs.
 #
-# preamble_len stays 256 deliberately. Dropping to 128 relaxes the minima to
-# 1683/1145/1749/1141 and shortens the frame to T_f=22141 (7.5 Hz vs 6.7 Hz),
-# only a 12% gain: at N_R=8 the frame is dominated by its 16 slots, and each
-# slot's pitch is set by processing time, not preamble air time. 256 is what
-# raised anchor Poll reception to 98-99% in the mixed fleet, so it is not
-# worth trading for 0.8 Hz.
+# Result at N_I=6, N_R=12, preamble_len=256: delta_r>=1441, delta_p>=1437,
+# t_r0>=1314, t_p0>=1408. Note the pitches now dominate the bases (opposite
+# of the N_R=8 point), because pitch is driven by proc_us+isr_us+margin_us
+# (1115) per additional Response/Report slot, while base is a one-time
+# proc_poll_us/proc_final_us cost -- so pitch matters more as N_R grows.
+#
+# If an ESP32 is ever used as an anchor, re-derive this from ITS proc_*
+# defaults instead (proc_us=1500 conservative -- see port/esp32/
+# board_defaults.c) and take the larger of the two; do not assume nRF52.
 COMMON = {
     "init_count":      N_TAGS,
     "resp_count":      N_ANCHORS,
     "preamble_len":    256,
     "guard_us":        300,
-    "resp_base_us":    1850,
-    "resp_pitch_us":   1300,
-    "report_base_us":  1900,
-    "report_pitch_us": 1300,
+    "resp_base_us":    1364,
+    "resp_pitch_us":   1471,
+    "report_base_us":  1448,
+    "report_pitch_us": 1467,
     "rx_timeout_us":   900,
     "rate_div":        1,
     "report_enable":   1,
     "sync_mmax":       10,
+
+    # Not hashed -- may legitimately differ per board -- but normalized here
+    # anyway. $TABLEB checks eq(12)/eq(13) against WHATEVER proc_us/isr_us/
+    # margin_us/proc_poll_us/proc_final_us a board currently carries in NVS,
+    # regardless of its role: a tag's leftover value from an earlier, more
+    # conservative provisioning (e.g. 1500 from an 8-anchor run) can trip
+    # TIGHT even though a tag never actually spends this budget. Setting
+    # every board to the same values the geometry above was sized for keeps
+    # $TABLEB passing everywhere and means any board is ready to serve as an
+    # anchor without a second pass if it is ever repurposed.
+    "proc_us":         1000,
+    "isr_us":          15,
+    "margin_us":       100,
+    "proc_poll_us":    1000,
+    "proc_final_us":   1000,
 }
 
 # rx_timeout_us MUST stay well below resp_pitch_us. Measured 2026-09-17: at
@@ -63,8 +88,8 @@ COMMON = {
 # 1's frame and resp_lost doubled to 8.7%.
 assert COMMON["rx_timeout_us"] < COMMON["resp_pitch_us"] - 200, "rx_timeout too close to resp_pitch"
 
-EXPECT_FRAME_DUR = 24892
-EXPECT_HASH = "0x650D"
+EXPECT_FRAME_DUR = 38271
+EXPECT_HASH = "0x02F3"  # confirmed on T1 (0x8052), 2026-09-18
 SUPERFRAME_US = EXPECT_FRAME_DUR * N_TAGS
 
 
@@ -133,8 +158,16 @@ def provision(port, role, index, baud=None):
     s.close()
 
     label = f"T{index + 1}" if role == "tag" else f"A{index + 1}"
-    ok = c.get("_hash") == EXPECT_HASH
     print(f"{label:>3}  {c.get('node_id')}  {port}")
+    if EXPECT_HASH is None:
+        print(f"     role={c.get('role')} "
+              f"{'frame_index' if role == 'tag' else 'slot_index'}={index} "
+              f"T_f={c.get('frame_dur_us')} hash={c.get('_hash')}")
+        print(f"     EXPECT_HASH is unset -- this is the reference. "
+              f"Set EXPECT_HASH = \"{c.get('_hash')}\" in fleet.py before "
+              f"provisioning the next node.")
+        return True
+    ok = c.get("_hash") == EXPECT_HASH
     print(f"     role={c.get('role')} "
           f"{'frame_index' if role == 'tag' else 'slot_index'}={index} "
           f"T_f={c.get('frame_dur_us')} hash={c.get('_hash')} "
