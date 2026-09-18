@@ -15,9 +15,21 @@ BOARDS = {
     # of cfg_hash(), so the asymmetry never affects ranging.
     "ESP_T1": ("/dev/cu.usbserial-023BB217",    921600),   # 0x8052 frame 0
     "ESP_T2": ("/dev/cu.usbserial-023BB1E4",    921600),   # 0x8053 frame 1
+    "ESP_T3": ("/dev/cu.usbserial-023BB1D1",    921600),   # 0x4051 frame 2
     "DWM_A1": ("/dev/cu.usbmodem0007601315731", 115200),   # 0x0101 slot 0
     "DWM_A2": ("/dev/cu.usbmodem0007601315901", 115200),   # 0x0F70 slot 1
 }
+
+# A tag's TDMA position is frame_index (validated < init_count); an anchor's
+# is slot_index (validated < resp_count). They are different fields -- setting
+# slot_index on a tag does nothing, which is easy to get wrong because every
+# board reports both.
+#
+# Adding a tag costs rate: the superframe is init_count * frame_dur_us, so
+# each tag still gets exactly one frame in it. At frame_dur_us=6701 that is
+# 74.6 Hz per tag with 2 tags and 49.7 Hz with 3 -- structural, not a fault.
+# init_count is hashed, so every node must be moved together or the ones left
+# behind have their frames dropped on a cfg_hash mismatch.
 
 
 def cs(payload):
