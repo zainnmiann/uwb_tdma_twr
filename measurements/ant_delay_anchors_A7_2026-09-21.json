@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A7 (ESP32) antenna delay calibration, against T1 held FIXED at 16428.",
+  "true_distance_mm": 6585,
+  "note_on_distance": "User corrected the distance mid-calibration from an initially given 4184mm to 6585mm. All measurements below used 6585mm.",
+
+  "anomaly": "This board's measured range drifted monotonically upward across the whole calibration session regardless of the correction applied (raw sequence: 6530.78 -> 6619.45 -> 6639.52mm), making two consecutive corrections appear to move the residual in the WRONG direction (a correction that should have reduced the residual instead coincided with it growing). Ruled out a config-application bug first: confirmed RANGE,START calls radio_reconfigure(cfg()) via the same platform-agnostic core/serial.c path already proven correct on A1-A6, so the antenna-delay writes were taking effect. Characterized the drift with two back-to-back 60s NO-CHANGE windows (residuals 76.2mm, 84.8mm -- consistent with each other, and their sub-chunk deltas were much smaller than the earlier change-driven jumps), then a 90s post-correction window whose six sub-chunks were flat (6592-6611mm, no trend) -- confirming the drift had settled, most likely thermal warm-up specific to this board (the only ESP32 anchor, freshly connected for this calibration).",
+
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 265, "window_s": 60, "mean_mm": 6530.78, "sd_mm": 71.76, "sem_mm": 4.41, "residual_mm": -54.22, "correction_dtu": 12, "new_ant_delay": 16424 },
+    { "pass": 2, "baseline": 16424, "n": 266, "window_s": 60, "mean_mm": 6619.45, "sd_mm": 83.24, "sem_mm": 5.10, "residual_mm": 34.45, "correction_dtu": -7, "new_ant_delay": 16431,
+      "note": "residual grew instead of shrinking -- first sign of the drift, not yet recognized as such" },
+    { "pass": 3, "baseline": 16431, "n": 264, "window_s": 60, "mean_mm": 6639.52, "sd_mm": 80.04, "sem_mm": 4.93, "residual_mm": 54.52,
+      "note": "residual grew AGAIN in the same direction after a correctly-signed correction -- stopped reactive correcting here and diagnosed instead" },
+    { "pass": "diagnostic", "baseline": 16431, "windows": [
+        { "n": 266, "window_s": 60, "mean_mm": 6661.24, "residual_mm": 76.24, "chunks_mm": [6658.6, 6643.9, 6663.1, 6678.8] },
+        { "n": 262, "window_s": 60, "mean_mm": 6669.75, "residual_mm": 84.75, "chunks_mm": [6653.1, 6671.3, 6676.1, 6678.3] }
+      ], "combined_n": 528, "combined_mean_mm": 6665.46, "combined_residual_mm": 80.46,
+      "note": "windows agree closely with each other (8.5mm apart); combined mean used for the next correction rather than any single noisy pass" },
+    { "pass": 4, "baseline": 16431, "correction_dtu": -17, "new_ant_delay": 16448 },
+    { "pass": 5, "baseline": 16448, "n": 395, "window_s": 90, "mean_mm": 6600.94, "sd_mm": 70.00, "sem_mm": 3.52, "residual_mm": 15.94,
+      "chunks_mm": [6611.2, 6591.9, 6595.7, 6605.5, 6601.7, 6599.7],
+      "note": "six sub-chunks over 90s show NO trend -- drift has settled" },
+    { "pass": 6, "baseline": 16448, "correction_dtu": -3, "new_ant_delay": 16451 },
+    { "pass": 7, "baseline": 16451, "n": 241, "window_s": 60, "mean_mm": 6590.75, "sd_mm": 74.95, "sem_mm": 4.83, "residual_mm": 5.75, "verdict": "converged" }
+  ],
+
+  "result": { "A7_0xC050": { "ant_delay_tx": 16451, "ant_delay_rx": 16451 } },
+
+  "lesson": "Before reacting to an unexpected-direction residual with another correction, check for drift with a no-change window pair first -- a superimposed drift trend can make a correctly-signed correction look backwards. This cost 3 wasted correction passes before being caught."
+}
