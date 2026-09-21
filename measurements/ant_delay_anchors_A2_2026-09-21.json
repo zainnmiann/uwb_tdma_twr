@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A2 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5480,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 265, "window_s": 60, "mean_mm": 5494.32, "sd_mm": 62.59, "sem_mm": 3.85, "residual_mm": 14.32, "correction_dtu": -3, "new_ant_delay": 16439 },
+    { "pass": 2, "baseline": 16439, "n": 262, "window_s": 60, "mean_mm": 5478.08, "sd_mm": 60.14, "sem_mm": 3.72, "residual_mm": -1.92, "verdict": "converged on first correction" }
+  ],
+  "result": { "A2_0x0F70": { "ant_delay_tx": 16439, "ant_delay_rx": 16439 } }
+}
