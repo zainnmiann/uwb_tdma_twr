@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Tag T2 antenna delay calibration, against T1 held FIXED at its already-calibrated 16428. Full correction attributed to T2 alone (same method as T3).",
+  "true_distance_mm": 1502,
+  "method": "T2 temporarily role=RESP, slot_index=7, RESET to force live re-dispatch. T1 (0x8052) stayed INIT/frame_index 0, ant_delay untouched at 16428 throughout. Every pass used a 60s window from the start, not 40s -- the T3 calibration showed a single 40s window occasionally isn't enough to average out short-term effects at this range.",
+
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 266, "window_s": 60, "mean_mm": 1525.77, "sd_mm": 58.61, "sem_mm": 3.59, "residual_mm": 23.77, "correction_dtu": -5, "new_ant_delay": 16441 },
+    { "pass": 2, "baseline": 16441, "n": 265, "window_s": 60, "mean_mm": 1512.38, "sd_mm": 61.92, "sem_mm": 3.80, "residual_mm": 10.38, "correction_dtu": -2, "new_ant_delay": 16443 },
+    { "pass": 3, "baseline": 16443, "n": 266, "window_s": 60, "mean_mm": 1498.44, "sd_mm": 63.09, "sem_mm": 3.87, "residual_mm": -3.56, "verdict": "converged (within 1 SEM)" }
+  ],
+
+  "result": { "T2_0x8053": { "ant_delay_tx": 16443, "ant_delay_rx": 16443 } },
+
+  "note": "Clean convergence, no anomaly this time (unlike T3). Three passes, monotonic, all within expectation given the ~9.4mm-per-2-DTU sensitivity established earlier."
+}
