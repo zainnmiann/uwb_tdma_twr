@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Tag-to-tag antenna delay calibration (step 1 of the fleet calibration plan: tags calibrated against each other first, then each anchor against a fixed-delay tag).",
+  "method": "T1 (0x8052) stayed INIT/frame_index 0. T4 (0x7851) was temporarily set role=RESP, slot_index=7 (an unused slot, since A1-A7 occupy 0-6) and RESET to force the firmware's boot-time role dispatch to re-run -- SET,role + SAVE alone does not switch a live node's running state machine, only its NVS config; the state machine only re-dispatches on BOOT -> LOAD_CFG. Both boards were pinned to a common explicit baseline (ant_delay_tx=ant_delay_rx=16436, the vendor DW1000 example-code reference value) before measuring, rather than the CFG_ANT_DELAY_UNCAL sentinel (0xFFFF) T4 had defaulted to, so the correction is computed against a known symmetric starting point on both ends.",
+  "true_distance_mm": 1630,
+  "note": "role, slot_index/frame_index, and ant_delay_tx/rx are NOT part of cfg_hash -- confirmed against core/cfg.c's cfg_hash_compute() field list before touching them -- so this entire procedure never desynced the rest of the fleet (hash stayed 0x02F3 throughout).",
+
+  "correction_math": {
+    "c_air_mm_per_ps": 0.299702547,
+    "ps_per_dtu": 15.65004,
+    "source": "Same constants core/ranging.c uses for ranging_ps_to_mm(), so this calibration's math matches the firmware's own.",
+    "model": "Spec eq(6): d = c*(tau - deltaA - deltaB). This firmware applies deltaA/deltaB by programming ant_delay_tx/ant_delay_rx directly into the DW1000's own antenna-delay registers (see core/ranging.h:78-79), not as a software subtraction -- so a distance deficit (measured < true) means too much delay is currently programmed and must be REDUCED, split evenly between the two identical-hardware tags, applied equally to each tag's own tx and rx register."
+  },
+
+  "passes": [
+    {
+      "pass": 1,
+      "baseline_ant_delay": 16436,
+      "n": 178,
+      "window_s": 40.0,
+      "mean_mm": 1569.18,
+      "sd_mm": 77.19,
+      "sem_mm": 5.79,
+      "residual_mm": -60.82,
+      "correction_dtu_per_node": -6,
+      "new_ant_delay": 16430
+    },
+    {
+      "pass": 2,
+      "baseline_ant_delay": 16430,
+      "n": 179,
+      "window_s": 40.2,
+      "mean_mm": 1610.03,
+      "sd_mm": 71.85,
+      "sem_mm": 5.37,
+      "residual_mm": -19.97,
+      "correction_dtu_per_node": -2,
+      "new_ant_delay": 16428
+    },
+    {
+      "pass": 3,
+      "baseline_ant_delay": 16428,
+      "n": 178,
+      "window_s": 40.0,
+      "mean_mm": 1632.45,
+      "sd_mm": 74.10,
+      "sem_mm": 5.55,
+      "residual_mm": 2.45,
+      "verdict": "converged -- residual within +-1 SEM"
+    }
+  ],
+
+  "result": {
+    "T1_0x8052": { "ant_delay_tx": 16428, "ant_delay_rx": 16428 },
+    "T4_0x7851": { "ant_delay_tx": 16428, "ant_delay_rx": 16428 }
+  },
+
+  "caveats": [
+    "Single-baseline calibration, per the user's stated plan. A single distance can alias a directional/multipath bias into the delay estimate; recommended improvement (given, not yet applied) is 2-3 different distances/orientations averaged.",
+    "Per-sample SD stayed ~72-77mm across all three passes regardless of the mean converging -- that noise floor is inherent to this measurement (short range, indoor multipath), not something the antenna-delay correction can remove. The mean is reliable (SEM ~5.5mm) even though individual $RNG lines are noisy.",
+    "This is TAG-to-TAG calibration only (both boards identical ESP32 UWB Pro hardware, correction split evenly 50/50). Anchor calibration per the user's stated plan is a separate next step: a fixed-delay tag (e.g. this now-calibrated T1) against each anchor individually, anchor's own delay solved with the tag held fixed."
+  ]
+}
