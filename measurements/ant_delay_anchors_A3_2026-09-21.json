@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A3 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5480,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 266, "window_s": 60, "mean_mm": 5554.32, "sd_mm": 42.91, "sem_mm": 2.63, "residual_mm": 74.32, "correction_dtu": -16, "new_ant_delay": 16452 },
+    { "pass": 2, "baseline": 16452, "n": 266, "window_s": 60, "mean_mm": 5489.96, "sd_mm": 43.17, "sem_mm": 2.65, "residual_mm": 9.96, "correction_dtu": -2, "new_ant_delay": 16454 },
+    { "pass": 3, "baseline": 16454, "n": 266, "window_s": 60, "mean_mm": 5487.27, "sd_mm": 47.90, "sem_mm": 2.94, "residual_mm": 7.27, "correction_dtu": -2, "new_ant_delay": 16456,
+      "note": "residual only dropped 9.96->7.27mm on a step expected to shift ~9.4mm -- smaller-than-predicted movement, similar in kind (though smaller in magnitude) to the T3 anomaly. Took one more pass rather than reacting further." },
+    { "pass": 4, "baseline": 16456, "n": 263, "window_s": 60, "mean_mm": 5484.38, "sd_mm": 61.07, "sem_mm": 3.77, "residual_mm": 4.38, "verdict": "converged -- within ~1 SEM, and a further 1-2 DTU nudge would be smaller than the measurement noise floor itself" }
+  ],
+  "result": { "A3_0x0102": { "ant_delay_tx": 16456, "ant_delay_rx": 16456 } },
+  "note": "Slower convergence than A1/A2 (4 passes vs 1-2), residual reduction per pass ran smaller than the linear model predicts. Not fully explained; flagged for awareness rather than pursued further given diminishing returns relative to the noise floor."
+}
