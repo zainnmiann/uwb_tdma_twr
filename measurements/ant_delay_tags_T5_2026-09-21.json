@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Tag T5 antenna delay calibration, against T1 held FIXED at 16428. Full correction attributed to T5 alone. First DWM1001 tag calibrated -- previous three (T2, T3, T4) were all ESP32 UWB Pro.",
+  "true_distance_mm": 1502,
+  "method": "T5 temporarily role=RESP, slot_index=7, RESET to force live re-dispatch. T1 (0x8052, ESP32) stayed INIT/frame_index 0, ant_delay untouched at 16428 throughout. 60s windows throughout.",
+
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 263, "window_s": 60, "mean_mm": 1687.67, "sd_mm": 73.03, "sem_mm": 4.50, "residual_mm": 185.67, "correction_dtu": -40, "new_ant_delay": 16476,
+      "note": "Deficit far larger than any ESP32 tag (10-90mm) -- expected, not anomalous: T5 is a DWM1001, a different DW1000 module/antenna integration than T1's ESP32, so a materially different intrinsic antenna delay is normal, not a fault." },
+    { "pass": 2, "baseline": 16476, "n": 260, "window_s": 60, "mean_mm": 1486.20, "sd_mm": 81.86, "sem_mm": 5.08, "residual_mm": -15.80, "correction_dtu": 3, "new_ant_delay": 16473 },
+    { "pass": 3, "baseline": 16473, "n": 263, "window_s": 60, "mean_mm": 1505.27, "sd_mm": 67.90, "sem_mm": 4.19, "residual_mm": 3.27, "verdict": "converged" }
+  ],
+
+  "result": { "T5_0x0104": { "ant_delay_tx": 16473, "ant_delay_rx": 16473 } },
+
+  "note": "T5's calibrated value (16473) differs from every ESP32 tag's (16428-16443) by 30-45 units -- consistent with genuinely different hardware, not measurement noise (the correction converged cleanly to a residual within 1 SEM). Worth expecting the same pattern for T6, the other DWM1001 tag."
+}
