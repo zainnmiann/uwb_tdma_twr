@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A6 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5480,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 265, "window_s": 60, "mean_mm": 5519.65, "sd_mm": 61.74, "sem_mm": 3.79, "residual_mm": 39.65, "correction_dtu": -8, "new_ant_delay": 16444 },
+    { "pass": 2, "baseline": 16444, "n": 265, "window_s": 60, "mean_mm": 5493.75, "sd_mm": 60.43, "sem_mm": 3.71, "residual_mm": 13.75, "correction_dtu": -3, "new_ant_delay": 16447 },
+    { "pass": 3, "baseline": 16447, "n": 266, "window_s": 60, "mean_mm": 5474.77, "sd_mm": 58.11, "sem_mm": 3.56, "residual_mm": -5.23, "verdict": "converged -- within ~1.5 SEM, further correction would be sub-DTU" }
+  ],
+  "result": { "A6_0x0106": { "ant_delay_tx": 16447, "ant_delay_rx": 16447 } }
+}
