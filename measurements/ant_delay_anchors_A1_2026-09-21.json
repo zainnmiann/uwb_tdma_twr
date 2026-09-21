@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A1 antenna delay calibration, against T1 (0x8052) held FIXED at 16428, per the user's stated plan: tags calibrated first and fixed, anchors calibrated one at a time against a fixed tag, full correction attributed to the anchor alone.",
+  "true_distance_mm": 5480,
+  "method": "A1 needed no role change -- it is already role=RESP/slot_index=0 as a real fleet anchor, unlike the tag-vs-tag calibrations which required temporarily flipping a tag to RESP at an unused slot. Simpler procedure: SET ant_delay, SAVE, RANGE,START, measure, iterate.",
+
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 264, "window_s": 60, "mean_mm": 5591.51, "sd_mm": 52.88, "sem_mm": 3.25, "residual_mm": 111.51, "correction_dtu": -24, "new_ant_delay": 16460 },
+    { "pass": 2, "baseline": 16460, "n": 265, "window_s": 60, "mean_mm": 5478.62, "sd_mm": 54.32, "sem_mm": 3.34, "residual_mm": -1.38, "verdict": "converged on first correction, no refinement pass needed" }
+  ],
+
+  "result": { "A1_0x0101": { "ant_delay_tx": 16460, "ant_delay_rx": 16460 } },
+
+  "note": "At the longer 5.48m baseline the per-sample SD (52-54mm) is comparable to the short 1.5-1.6m tag-tag baselines, suggesting this noise floor is dominated by ranging/multipath, not range-proportional error."
+}
