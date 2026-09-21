@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Tag T3 antenna delay calibration, against T1 held FIXED at its already-calibrated 16428 (see ant_delay_tags_2026-09-21.json). Method changed from the T1/T4 pairing: there both sides were unknown and split 50/50; here T1 is a trusted reference, so the full correction is attributed to T3 alone -- pulling every subsequent tag into agreement with the same fixed point rather than letting the reference drift with each new pairing.",
+  "true_distance_mm": 1630,
+  "method": "T3 temporarily role=RESP, slot_index=7 (unused), RESET to force live re-dispatch (SET,role+SAVE alone does not switch a running node -- role dispatch is boot-time only, per the spec's own state diagrams). T1 (0x8052) stayed INIT/frame_index 0, ant_delay untouched at 16428 throughout.",
+
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 179, "window_s": 40, "mean_mm": 1540.42, "sd_mm": 64.49, "sem_mm": 4.82, "residual_mm": -89.58, "correction_dtu": 19, "new_ant_delay": 16417 },
+    { "pass": 2, "baseline": 16417, "n": 179, "window_s": 40, "mean_mm": 1641.25, "sd_mm": 59.16, "sem_mm": 4.42, "residual_mm": 11.25, "correction_dtu": -2, "new_ant_delay": 16419,
+      "note": "residual was 2.5 SEM from zero, judged worth one more refinement" },
+    { "pass": 3, "baseline": 16419, "n": 177, "window_s": 40, "mean_mm": 1586.89, "sd_mm": 59.19, "sem_mm": 4.45, "residual_mm": -43.11,
+      "note": "ANOMALY: a 2-DTU change should shift the mean by ~9.4mm, not 54mm. Re-measured over a longer 60s window (n=266) before reacting -- residual held stable at -39.18mm across four 15s chunks (1603.8/1586.2/1582.1/1591.2mm), rejecting equipment flakiness/transient movement as the cause. The single 40s pass-2 reading (+11.25mm) was concluded to have been the outlier, not pass 3." },
+    { "pass": 4, "baseline": 16419, "n": 266, "window_s": 60, "mean_mm": 1590.82, "sd_mm": 59.61, "sem_mm": 3.66, "residual_mm": -39.18, "correction_dtu": 8, "new_ant_delay": 16411,
+      "note": "correction computed from this larger, stability-confirmed sample instead of pass 2's single reading" },
+    { "pass": 5, "baseline": 16411, "n": 265, "window_s": 60, "mean_mm": 1627.64, "sd_mm": 55.89, "sem_mm": 3.43, "residual_mm": -2.36, "verdict": "converged" }
+  ],
+
+  "result": { "T3_0x4051": { "ant_delay_tx": 16411, "ant_delay_rx": 16411 } },
+
+  "caveats": [
+    "The pass-3 anomaly is a genuine open question, not fully explained -- ruled out equipment/timing flakiness (stable over 60s) and ruled out my correction math (same formula that converged cleanly for T1/T4 and for this board's other four passes). Left as: a single 40s window is occasionally not enough to average out short-term multipath/geometry effects at this range; the fix applied was simply to trust a longer, re-confirmed sample over a shorter single one, not to add any new model term. Worth remembering when calibrating T2/T5/T6: verify a correction with a second independent measurement before calling it converged, not just one confirmation pass.",
+    "Same per-sample noise floor as the T1/T4 calibration (~55-65mm SD per line); the mean is reliable via SEM, individual $RNG lines are not."
+  ]
+}
