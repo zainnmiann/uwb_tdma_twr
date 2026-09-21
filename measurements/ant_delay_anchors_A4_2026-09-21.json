@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A4 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5480,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 265, "window_s": 60, "mean_mm": 5524.75, "sd_mm": 82.05, "sem_mm": 5.04, "residual_mm": 44.75, "correction_dtu": -10, "new_ant_delay": 16446 },
+    { "pass": 2, "baseline": 16446, "n": 266, "window_s": 60, "mean_mm": 5487.38, "sd_mm": 84.09, "sem_mm": 5.16, "residual_mm": 7.38, "correction_dtu": -2, "new_ant_delay": 16448 },
+    { "pass": 3, "baseline": 16448, "n": 265, "window_s": 60, "mean_mm": 5480.45, "sd_mm": 83.04, "sem_mm": 5.10, "residual_mm": 0.45, "verdict": "converged" }
+  ],
+  "result": { "A4_0x0E5B": { "ant_delay_tx": 16448, "ant_delay_rx": 16448 } },
+  "note": "Higher per-sample SD (~82-84mm) than A1-A3 (43-62mm) throughout all three passes on this board specifically -- consistent noise characteristic of A4, not a transient. Worth keeping an eye on during live-fleet verification."
+}
