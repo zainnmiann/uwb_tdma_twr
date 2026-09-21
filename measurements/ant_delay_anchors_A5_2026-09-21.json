@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-21",
+  "purpose": "Anchor A5 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5480,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 264, "window_s": 60, "mean_mm": 5512.11, "sd_mm": 69.83, "sem_mm": 4.30, "residual_mm": 32.11, "correction_dtu": -7, "new_ant_delay": 16443 },
+    { "pass": 2, "baseline": 16443, "n": 265, "window_s": 60, "mean_mm": 5482.29, "sd_mm": 64.83, "sem_mm": 3.98, "residual_mm": 2.29, "verdict": "converged on first correction" }
+  ],
+  "result": { "A5_0x0103": { "ant_delay_tx": 16443, "ant_delay_rx": 16443 } }
+}
