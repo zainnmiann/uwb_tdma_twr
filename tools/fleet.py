@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Provision one board into the 6-tag / 8-anchor fleet, or verify the fleet.
+"""Provision one board into the 6-tag / 7-anchor fleet, or verify the fleet.
 
     python3 tools/fleet.py <port> tag <0-5>        # role INIT, frame_index N
-    python3 tools/fleet.py <port> anchor <0-7>     # role RESP, slot_index N
+    python3 tools/fleet.py <port> anchor <0-6>     # role RESP, slot_index N
     python3 tools/fleet.py --verify                # check every board in BOARDS
     python3 tools/fleet.py --plan                  # print the target config
 
@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from uwb import BOARDS, popen, cmd, get_cfg
 
 N_TAGS = 6
-N_ANCHORS = 12
+N_ANCHORS = 7
 
 # Hashed parameters. eq(12)/eq(13) minima (t_r0_us, delta_r_us, t_p0_us,
 # delta_p_us in $TABLEB) are pure functions of cfg.proc_us/isr_us/margin_us/
@@ -35,23 +35,28 @@ N_ANCHORS = 12
 # board can carry its own. But the geometry they size (resp_base_us,
 # resp_pitch_us, report_base_us, report_pitch_us) IS hashed and shared, and
 # it is the ANCHOR that actually spends this budget arming its Response and
-# Report. In this fleet anchors are DWM1001s, so the minima here were
-# computed 2026-09-18 by setting a board's proc_* fields to the nRF52 port's
-# own defaults (proc_us=1000, isr_us=15, margin_us=100, proc_poll_us=1000,
-# proc_final_us=1000 -- see port/nrf52/board_defaults.c) before reading
-# $TABLEB, NOT from a connected tag's own (irrelevant) proc_* values -- a tag
-# never responds or reports, so its $MEASURE proc_resp_us/proc_rep_us read 0
-# and its proc_us has no bearing on what an anchor needs.
+# Report. This fleet's anchors are a MIX of DWM1001 and ESP32 (A7), so the
+# minima were computed 2026-09-18 by setting a board's proc_* fields to the
+# nRF52 port's own defaults (proc_us=1000, isr_us=15, margin_us=100,
+# proc_poll_us=1000, proc_final_us=1000 -- see port/nrf52/
+# board_defaults.c) before reading $TABLEB, NOT from a connected tag's own
+# (irrelevant) proc_* values -- a tag never responds or reports, so its
+# $MEASURE proc_resp_us/proc_rep_us read 0 and its proc_us has no bearing
+# on what an anchor needs.
 #
-# Result at N_I=6, N_R=12, preamble_len=256: delta_r>=1441, delta_p>=1437,
-# t_r0>=1314, t_p0>=1408. Note the pitches now dominate the bases (opposite
-# of the N_R=8 point), because pitch is driven by proc_us+isr_us+margin_us
-# (1115) per additional Response/Report slot, while base is a one-time
-# proc_poll_us/proc_final_us cost -- so pitch matters more as N_R grows.
+# eq(12)/eq(13) minima do NOT depend on N_R (only eq(14)'s frame_dur_us
+# does, via the (N_R-1) terms), so the same resp_base/pitch/report_base/
+# pitch from the N_R=12 point carry over unchanged to N_R=7; only
+# frame_dur_us was recomputed. delta_r>=1441, delta_p>=1437, t_r0>=1314,
+# t_p0>=1373 -- all comfortably under the chosen 1471/1467/1364/1448.
 #
-# If an ESP32 is ever used as an anchor, re-derive this from ITS proc_*
-# defaults instead (proc_us=1500 conservative -- see port/esp32/
-# board_defaults.c) and take the larger of the two; do not assume nRF52.
+# A7's own $MEASURE (2026-09-21, real live traffic, N_R=12 point) showed
+# proc_resp_us max 595 / budget 1364 and proc_rep_us max 917 / budget 1448
+# -- both fit with ~40% margin, confirming an ESP32 anchor performs fine
+# under this geometry despite carrying the nRF52-sized budget rather than
+# its own conservative default. Do not assume this without measuring on
+# a new platform combination -- it happened to fit here, it was not
+# derived to fit.
 COMMON = {
     "init_count":      N_TAGS,
     "resp_count":      N_ANCHORS,
@@ -88,8 +93,8 @@ COMMON = {
 # 1's frame and resp_lost doubled to 8.7%.
 assert COMMON["rx_timeout_us"] < COMMON["resp_pitch_us"] - 200, "rx_timeout too close to resp_pitch"
 
-EXPECT_FRAME_DUR = 38271
-EXPECT_HASH = "0x02F3"  # confirmed on T1 (0x8052), 2026-09-18
+EXPECT_FRAME_DUR = 23546
+EXPECT_HASH = "0x613D"  # confirmed on A7 (0xC050), 2026-09-21
 SUPERFRAME_US = EXPECT_FRAME_DUR * N_TAGS
 
 
