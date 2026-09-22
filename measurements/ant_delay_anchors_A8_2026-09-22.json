@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-22",
+  "purpose": "Anchor A8 antenna delay calibration, against T1 (0x8052) held FIXED at 16428.",
+  "true_distance_mm": 5252,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 263, "window_s": 60, "mean_mm": 5361.38, "sd_mm": 97.74, "sem_mm": 6.03, "residual_mm": 109.38, "correction_dtu": -23, "new_ant_delay": 16459 },
+    { "pass": 2, "baseline": 16459, "n": 266, "window_s": 60, "mean_mm": 5294.70, "sd_mm": 102.49, "sem_mm": 6.28, "residual_mm": 42.70, "correction_dtu": -9, "new_ant_delay": 16468 },
+    { "pass": 3, "baseline": 16468, "n": 264, "window_s": 60, "mean_mm": 5249.82, "sd_mm": 109.69, "sem_mm": 6.75, "residual_mm": -2.18, "verdict": "converged" }
+  ],
+  "result": { "A8_0x0108": { "ant_delay_tx": 16468, "ant_delay_rx": 16468 } },
+  "note": "Higher per-sample SD (~98-110mm) throughout, comparable to A4's elevated noise (~82-84mm) -- worth checking placement/orientation on this board too."
+}
