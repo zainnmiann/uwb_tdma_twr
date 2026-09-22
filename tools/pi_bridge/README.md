@@ -51,6 +51,26 @@ sudo journalctl -u uwb-bridge -f          # on the Pi
 - Checksum framing (`cs()`, `check_line()`) is copied verbatim from
   `tools/uwb.py`, not reimplemented, so the two never silently drift apart.
 
+## SD card corruption from unclean power loss
+
+The card was pulled by unplugging power directly (no `shutdown -h now`)
+multiple times during initial setup. After enough cycles of that the Pi
+stopped booting at all (red LED only, no green activity -- not even
+`fsck.repair=yes` could recover it) and needed a full re-flash. **Always
+`sudo shutdown -h now`, wait for all LEDs off, then pull power** before
+ever removing the card.
+
+## wifi-watchdog
+
+`nmcli connection show` already reports `AUTOCONNECT: yes` on the
+netplan-rendered wifi connection, so NetworkManager retries on its own by
+default -- this timer is a second layer, not the primary mechanism.
+`wifi-watchdog.timer` runs `wifi-watchdog.sh` every 2 minutes; the script
+is a no-op (and logs nothing) whenever `ip route get 1.1.1.1` already
+succeeds, and only nudges `wlan0` (disconnect, reconnect via `nmcli`) when
+the default route is actually gone. Check with
+`sudo journalctl -t wifi-watchdog -f` on the Pi.
+
 ## Known gotcha hit during setup
 
 Python 3.13's `threading.Thread` sets an internal instance attribute
