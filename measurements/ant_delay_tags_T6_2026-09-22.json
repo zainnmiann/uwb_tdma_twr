@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-22",
+  "purpose": "Tag T6 (DWM1001) antenna delay calibration, against T1 held FIXED at 16428. Last of the 6 tags -- all tags now calibrated.",
+  "true_distance_mm": 1600,
+  "passes": [
+    { "pass": 1, "baseline": 16436, "n": 266, "window_s": 60, "mean_mm": 1683.13, "sd_mm": 83.44, "sem_mm": 5.12, "residual_mm": 83.13, "correction_dtu": -18, "new_ant_delay": 16454 },
+    { "pass": 2, "baseline": 16454, "n": 266, "window_s": 60, "mean_mm": 1597.51, "sd_mm": 82.83, "sem_mm": 5.08, "residual_mm": -2.49, "verdict": "converged on first correction" }
+  ],
+  "result": { "T6_0x0105": { "ant_delay_tx": 16454, "ant_delay_rx": 16454 } },
+  "note": "Deficit magnitude (83.13mm) and final value (16454) are close to T5's (185.67mm deficit at a different baseline, 16473 final) -- consistent with both being the same DWM1001 hardware, distinct from the ESP32 tags (16411-16443)."
+}
