@@ -55,7 +55,7 @@ TAGS = {
 }
 ANCHORS = {
     "0x0101": "A1", "0x0F70": "A2", "0x0102": "A3", "0x0E5B": "A4",
-    "0x0103": "A5", "0x0106": "A6", "0xC050": "A7",
+    "0x0103": "A5", "0x0106": "A6", "0xC050": "A7", "0x0108": "A8",
 }
 
 # ESP32 (CP2104) tags run at 921600; DWM1001 (J-Link VCOM) tags run at
@@ -125,6 +125,13 @@ def identify(port, timeout=1.5):
     """Open port, ask $CFG, return (label, baud) if it's a known tag, else
     None. Tries each baud in PROBE_BAUDS; a wrong baud reads noise that
     fails check_line() and simply times out to the next baud, not a crash.
+
+    A device that disconnects mid-probe (unplugged during a rescan, a
+    flaky hub) must be treated exactly like one that never answered --
+    caught here and skipped -- not left to raise out of this function.
+    An uncaught SerialException here previously killed the whole process
+    (main()'s rescan loop has no try/except of its own), taking down
+    every OTHER tag's already-working reader thread along with it.
     """
     for baud in PROBE_BAUDS:
         try:
@@ -139,7 +146,11 @@ def identify(port, timeout=1.5):
             buf = b""
             role, node_id = None, None
             while time.time() < deadline:
-                chunk = ser.read(512)
+                try:
+                    chunk = ser.read(512)
+                except (serial.SerialException, OSError):
+                    chunk = b""
+                    break  # device dropped mid-probe -- try the next baud/port
                 if not chunk:
                     continue
                 buf += chunk
@@ -162,8 +173,13 @@ def identify(port, timeout=1.5):
                 # A real anchor, or a tag/anchor not in our fleet table --
                 # either way, not something this bridge reads from.
                 return None
+        except (serial.SerialException, OSError):
+            continue
         finally:
-            ser.close()
+            try:
+                ser.close()
+            except Exception:
+                pass
     return None
 
 
@@ -281,7 +297,15 @@ def main():
             for port in candidate_ports():
                 if port in claimed_ports:
                     continue
-                ident = identify(port)
+                try:
+                    ident = identify(port)
+                except Exception as e:
+                    # Belt-and-suspenders: identify() already catches its
+                    # own serial errors, but a rescan must never be able to
+                    # kill this loop (and every already-running TagReader
+                    # thread with it) over one uncooperative candidate.
+                    print(f"[rescan] identify({port}) raised {e!r}; skipping", file=sys.stderr)
+                    continue
                 if ident is None:
                     continue
                 label, baud = ident
