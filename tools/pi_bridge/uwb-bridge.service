@@ -1,0 +1,16 @@
+[Unit]
+Description=uwb_tdma_twr tag range bridge to MQTT
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=d7tech
+ExecStart=/usr/bin/python3 /opt/uwb_bridge/uwb_bridge.py --mqtt-host 192.168.0.180 --mqtt-port 1883
+Restart=always
+RestartSec=3
+# Fleet USB devices need no elevated privileges beyond dialout group
+# membership (added at install time); this does not run as root.
+
+[Install]
+WantedBy=multi-user.target
