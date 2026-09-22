@@ -81,3 +81,21 @@ a subclass method of the same name gets silently shadowed by it (instance
 method is called via `self._handle(...)`. The line handler here is named
 `_on_line`, not `_handle`, to avoid this. Worth remembering for any future
 `threading.Thread` subclass on Python >= 3.13.
+
+## Stale anchor[] table on T5/T6 (2026-09-22)
+
+T5 and T6 each carried a leftover local anchor table (`$ANCHOR` entries,
+`$LIST,ANCHOR`) that silently overrode every anchor's true node_id with a
+bogus sequential placeholder (slot N -> id 0x0101+N) -- never cleared
+before this session flashed them, since flashing does not erase NVS. Per
+`core/role_initiator.c`, a tag prefers this local table's `id` over the
+real over-the-air source address whenever `cfg_anchor_by_slot()` finds an
+enabled entry for that slot. Five of the eight placeholder values happened
+to coincidentally match a real fleet address (their own, or another real
+anchor's), so only 3 of 8 slots looked obviously wrong; all 8 were
+actually mislabeled.
+
+Fixed by disabling every entry (`$ANCHOR,<i>,0,0,0,0,0,0,0` for i=0..11,
+then `$SAVE`) on both tags, confirmed clean via `$LIST,ANCHOR`. T1-T4
+never showed this symptom -- worth checking their anchor tables too if
+mislabeled anchors ever reappear, rather than assuming it's fleet-wide.
