@@ -99,3 +99,29 @@ Fixed by disabling every entry (`$ANCHOR,<i>,0,0,0,0,0,0,0` for i=0..11,
 then `$SAVE`) on both tags, confirmed clean via `$LIST,ANCHOR`. T1-T4
 never showed this symptom -- worth checking their anchor tables too if
 mislabeled anchors ever reappear, rather than assuming it's fleet-wide.
+
+## Second Pi (2026-09-23)
+
+A second Pi hosts the DWM1001 tags (T5, T6) separately from the first
+(which has the 4 ESP32 tags T1-T4) -- splits the USB power budget across
+two boards after the first Pi's overcurrent/reset storm with all 6
+connected (see the "USB power" note the session's own troubleshooting
+surfaced: 6 tags, 4 of them with onboard displays, exceeded what one
+Pi's bus could supply).
+
+    host:     d7tech2@192.168.0.188
+    key:      ~/.ssh/id_ed25519_pi (same key as the first Pi)
+    bridge:   /opt/uwb_bridge/uwb_bridge.py, same script, unmodified
+    service:  uwb-bridge.service, User=d7tech2 (only line that differs
+              from the first Pi's unit file)
+    mqtt:     same broker as the first Pi -- 192.168.0.180:1883,
+              same topics (uwb/ranging/<tag>/<anchor>) -- both bridges
+              publish to one shared broker with no coordination between
+              them needed, by design (see the bridge's own docstring).
+
+Setup differed slightly from the first Pi: this one uses a plain Debian
+account (d7tech2, password auth) rather than a cloud-init-provisioned
+image, so no SD-card-in-a-card-reader dance was needed -- just added
+this session's SSH key to ~/.ssh/authorized_keys over password auth,
+then everything else (dialout group, python3-paho-mqtt via apt, bridge +
+watchdog deploy) is identical to the first Pi's setup.
