@@ -257,21 +257,62 @@ class TagReader(threading.Thread):
 
 
 def publisher(out_q, stop_evt, host, port):
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    client.connect(host, port, keepalive=30)
-    client.loop_start()
-    print(f"connected to mqtt://{host}:{port}")
-    try:
-        while not stop_evt.is_set():
+    """Own the MQTT connection and drain out_q onto it for the life of the
+    process. This is the ONLY thread that can make a bridge run with zero
+    visible symptoms while publishing nothing: it is a daemon thread, so
+    nothing restarts it if it dies, and the reader threads keep discovering
+    tags and filling out_q (bounded, so old messages are silently dropped
+    once full) regardless -- the fleet looks perfectly healthy from every
+    angle except the one that matters. Two layers of defense, not one:
+
+      1. An outer while-not-stop_evt loop around the ENTIRE body, catching
+         Exception broadly (not just the specific OSError this was first
+         found with), logging, tearing the client down, and reconnecting
+         after a backoff. Whatever kills this thread next -- a different
+         network error, a paho internals bug, anything -- restarts it the
+         same way, rather than needing a matching fix for every failure
+         mode discovered one at a time.
+      2. Inside that, the initial client.connect() specifically retries
+         (paho's own loop_start() reconnects a connection that drops AFTER
+         it is established, but does nothing for a connect() that never
+         succeeded in the first place).
+
+    Hit exactly this in testing: both Pis' publisher threads died on a
+    single transient "No route to host" at boot and stayed dead for 21
+    hours before anyone noticed the stream had gone silent."""
+    while not stop_evt.is_set():
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        try:
+            while not stop_evt.is_set():
+                try:
+                    client.connect(host, port, keepalive=30)
+                    break
+                except OSError as e:
+                    print(f"mqtt connect to {host}:{port} failed ({e}); "
+                          "retrying in 5s", file=sys.stderr)
+                    time.sleep(5)
+            else:
+                return  # stop_evt was set while still trying to connect
+
+            client.loop_start()
+            print(f"connected to mqtt://{host}:{port}")
+            while not stop_evt.is_set():
+                try:
+                    msg = out_q.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                topic = f"uwb/ranging/{msg['tag_label']}/{msg['anchor_label']}"
+                client.publish(topic, json.dumps(msg), qos=0)
+        except Exception as e:
+            print(f"publisher thread hit {e!r}; reconnecting in 5s",
+                  file=sys.stderr)
+            time.sleep(5)
+        finally:
             try:
-                msg = out_q.get(timeout=0.5)
-            except queue.Empty:
-                continue
-            topic = f"uwb/ranging/{msg['tag_label']}/{msg['anchor_label']}"
-            client.publish(topic, json.dumps(msg), qos=0)
-    finally:
-        client.loop_stop()
-        client.disconnect()
+                client.loop_stop()
+                client.disconnect()
+            except Exception:
+                pass
 
 
 def main():
