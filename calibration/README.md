@@ -22,9 +22,12 @@ the end value held beyond the ends:
 
 | path | what |
 |---|---|
+| `fix_recorded_ranges.py` | **Full fix of the recorded ranges**: (1) first-path filter (20th percentile of 9 readings), (2) per-tag calibration map, (3) geometric consistency: each static tag's ranges to all 7 anchors are made to meet at one robustly solved 3D point, using anchor coordinates only. A1–A5 RMSE 26.9 → 7.3 cm, 87% within ±10 cm (leave-one-position-out 7.9 cm / 84%). Step 3 makes a tag's ranges consistent with that point, so don't use them to judge positioning accuracy. |
 | `correct_all_tags.py` | Final correction of the 24 Sep 2026 survey runs, all tags T1–T6. Builds one map per tag from the surveyed links (4 m bins), applies it, adds a 9-reading moving median, and checks the maps leave-one-position-out. `--method bench` uses the bench map instead. |
 | `correct_dwm_ranges.py` | Survey helpers (`survey_truth`, `moving_median`) plus the earlier DWM-only correction. |
 | `results/sep24_calibration_map.csv` | The per-tag tables produced for the 24 Sep 2026 data. |
+| `results/sep24_calibration_map_firstpath.csv` | The bias map applied by `fix_recorded_ranges.py` (step 2): per tag, mean measured distance → bias in 4 m bins, built on the first-path-filtered ranges. |
+| `results/sep24_link_offsets_geometry.csv` | The per-link bias removed by `fix_recorded_ranges.py` step 3: each link's mean after step 2, the distance consistent with the solved tag point, and the difference. |
 | `bench/calib_log.py` | Logs one tag→anchor link at a measured distance (tag on USB, anchor on a power bank) and appends the mean measured range and bias to `bench/summary.csv`. |
 | `bench/apply_bias_map.py` | Builds the map from the bench runs and applies it, re-zeroed per link at the distances where that tag and anchor had their antenna delays calibrated. Also writes the arrays it applied: `bench_calibration_map.csv` and `bench_map_applied_per_link.csv` (each link's zero offset and the map values after subtracting it). |
 | `bench/bench_calibration_map.csv` | The bench calibration array: mean measured distance → bias at 1.5 / 5.5 / 9 / 12.5 / 16 m (runs at the same distance pooled). |
@@ -35,7 +38,9 @@ the end value held beyond the ends:
     python3 correct_all_tags.py <UWB-Results dir> <survey.xlsx> <out dir>
     python3 bench/calib_log.py 5.500 -n "note"          # one bench point
 
-`correct_all_tags.py` needs `openpyxl` for the survey workbook.
+`correct_all_tags.py` and `fix_recorded_ranges.py` need `openpyxl` (survey workbook); `fix_recorded_ranges.py` also needs `numpy`.
+
+    python3 fix_recorded_ranges.py <UWB-Results dir> <survey.xlsx> <out dir>
 
 ## Result on the 24 Sep 2026 runs
 
