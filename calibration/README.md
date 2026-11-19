@@ -26,7 +26,8 @@ the end value held beyond the ends:
 | `correct_dwm_ranges.py` | Survey helpers (`survey_truth`, `moving_median`) plus the earlier DWM-only correction. |
 | `results/sep24_calibration_map.csv` | The per-tag tables produced for the 24 Sep 2026 data. |
 | `bench/calib_log.py` | Logs one tag→anchor link at a measured distance (tag on USB, anchor on a power bank) and appends the mean measured range and bias to `bench/summary.csv`. |
-| `bench/apply_bias_map.py` | Builds the map from the bench runs and applies it, re-zeroed per link at the distances where that tag and anchor had their antenna delays calibrated. |
+| `bench/apply_bias_map.py` | Builds the map from the bench runs and applies it, re-zeroed per link at the distances where that tag and anchor had their antenna delays calibrated. Also writes the arrays it applied: `bench_calibration_map.csv` and `bench_map_applied_per_link.csv` (each link's zero offset and the map values after subtracting it). |
+| `bench/bench_calibration_map.csv` | The bench calibration array: mean measured distance → bias at 1.5 / 5.5 / 9 / 12.5 / 16 m (runs at the same distance pooled). |
 | `bench/summary.csv`, `bench/data/` | Bench runs from 18 Nov 2026: two DWM1001s on this firmware (Sep 24 config, hash 0x02F3, preamble 256), line of sight, at 1.5 / 5.5 / 9 (×3) / 12.5 / 16 m, ~520 readings each. |
 
 ## Running

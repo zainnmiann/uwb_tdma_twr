@@ -55,6 +55,24 @@ def load_map(summary):
     return [x for x, _, _ in tab], [y for _, y, _ in tab], [t for _, _, t in tab]
 
 
+def write_map(summary, path):
+    """The bench calibration array: one row per bench distance (runs pooled)."""
+    pool = defaultdict(lambda: [0, 0.0, 0.0, 0])
+    for r in csv.DictReader(open(summary)):
+        n = int(r["n"])
+        p = pool[float(r["true_m"])]
+        p[0] += n
+        p[1] += n * float(r["mean_m"])
+        p[2] += n * float(r["bias_cm"])
+        p[3] += 1
+    with open(path, "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["true_m", "runs", "n_readings", "mean_measured_m", "bias_cm"])
+        for t in sorted(pool):
+            n, s, b, k = pool[t]
+            w.writerow([f"{t:.3f}", k, n, f"{s / n:.4f}", f"{b / n:.2f}"])
+
+
 def interp(x, xs, ys):
     if x <= xs[0]:
         return ys[0]
@@ -119,6 +137,20 @@ def main():
     for tg in sorted({k[0] for k in offs}):
         print("  " + tg + ": " + "  ".join(f"{an} {offs[(tg, an)] * 100:+.1f}"
                                           for an in sorted(x for t, x in offs if t == tg)))
+
+    # The arrays themselves: the bench map, and the map as applied to each link
+    # (map value at each table point minus that link's zero offset).
+    write_map(a.summary, os.path.join(a.out, "bench_calibration_map.csv"))
+    with open(os.path.join(a.out, "bench_map_applied_per_link.csv"), "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["tag", "anchor", "tag_cal_m", "anchor_cal_m", "zero_offset_cm"]
+                   + [f"bias_at_{x:.3f}m_cm" for x in xs])
+        for tg, an in sorted(offs):
+            o = offs[(tg, an)]
+            w.writerow([tg, an,
+                        "" if a.zero_at is not None or tg == "T1" else CAL[tg],
+                        a.zero_at if a.zero_at is not None else CAL[an],
+                        f"{o * 100:.2f}"] + [f"{(y - o) * 100:.2f}" for y in ys])
     name = "ranges_bias_map" + (f"_zero{a.zero_at:g}m" if a.zero_at is not None else "_all_tags") + ".csv"
     with open(os.path.join(a.out, name), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
